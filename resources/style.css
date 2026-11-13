@@ -145,6 +145,50 @@ window {
     font-family: monospace;
 }
 
+/* Pomodoro Presets Row */
+.pomodoro-presets-box {
+    margin: 4px 0 6px 0;
+}
+
+.pomodoro-preset-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 150ms ease;
+}
+
+.pomodoro-preset-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.pomodoro-preset-active {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+    border-color: #3b82f6;
+}
+
+.pomodoro-adjust-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border-radius: 12px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    transition: all 150ms ease;
+}
+
+.pomodoro-adjust-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
 .pomodoro-btn-primary {
     background: #2563eb;
     color: #ffffff;

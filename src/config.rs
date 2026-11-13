@@ -85,6 +85,24 @@ impl Config {
         Config::default()
     }
 
+    pub fn save(&self) {
+        if let Some(path) = Self::get_config_path() {
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if let Ok(serialized) = toml::to_string_pretty(self) {
+                let _ = fs::write(&path, serialized);
+            }
+        }
+    }
+
+    pub fn update_pomodoro_durations(work_min: u32, break_min: u32) {
+        let mut config = Self::load();
+        config.pomodoro.work_duration_min = work_min;
+        config.pomodoro.break_duration_min = break_min;
+        config.save();
+    }
+
     pub fn get_config_path() -> Option<PathBuf> {
         dirs::config_dir().map(|mut p| {
             p.push("open-notch");
