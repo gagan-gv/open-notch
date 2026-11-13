@@ -1,4 +1,5 @@
 use glib::translate::ToGlibPtr;
+use gtk4::cairo::{RectangleInt, Region};
 use gtk4::gdk::Display;
 use gtk4::prelude::*;
 use gtk4::ApplicationWindow;
@@ -110,5 +111,28 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
         // 3. Move and size window to top-center
         XMoveResizeWindow(xdisplay, xid, target_x, target_y, width, height);
         XFlush(xdisplay);
+    }
+}
+
+/// Dynamically updates the clickable input mask:
+/// - When collapsed: only the notch pill receives mouse events; all empty areas pass clicks through.
+/// - When expanded: the entire shelf receives mouse events.
+pub fn update_notch_input_region(
+    window: &ApplicationWindow,
+    expanded: bool,
+    collapsed_w: i32,
+    collapsed_h: i32,
+    expanded_w: i32,
+    expanded_h: i32,
+) {
+    if let Some(surface) = window.surface() {
+        let rect = if expanded {
+            RectangleInt::new(0, 0, expanded_w, expanded_h)
+        } else {
+            let offset_x = (expanded_w - collapsed_w) / 2;
+            RectangleInt::new(offset_x, 0, collapsed_w, collapsed_h)
+        };
+        let region = Region::create_rectangle(&rect);
+        surface.set_input_region(&region);
     }
 }

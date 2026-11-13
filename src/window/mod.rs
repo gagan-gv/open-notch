@@ -13,8 +13,8 @@ pub fn build_ui(app: &Application, config: Config) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("OpenNotch")
-        .default_width(config.general.collapsed_width)
-        .default_height(config.general.collapsed_height)
+        .default_width(config.general.expanded_width)
+        .default_height(config.general.expanded_height)
         .decorated(false)
         .build();
 
@@ -31,14 +31,31 @@ pub fn build_ui(app: &Application, config: Config) {
 
     let win_setup = window.clone();
     let cfg_setup = config.clone();
+
+    // Configure window positioning & input shape immediately on realization
     window.connect_realize(move |_| {
-        let win_run = win_setup.clone();
-        let cfg_run = cfg_setup.clone();
+        position::position_x11_top_center(
+            &win_setup,
+            cfg_setup.general.expanded_width,
+            cfg_setup.general.expanded_height,
+        );
+        position::update_notch_input_region(
+            &win_setup,
+            false,
+            cfg_setup.general.collapsed_width,
+            cfg_setup.general.collapsed_height,
+            cfg_setup.general.expanded_width,
+            cfg_setup.general.expanded_height,
+        );
+
+        let win_post = win_setup.clone();
+        let cfg_post = cfg_setup.clone();
+        // Re-enforce position after Mutter maps the window
         glib::idle_add_local_once(move || {
             position::position_x11_top_center(
-                &win_run,
-                cfg_run.general.collapsed_width,
-                cfg_run.general.collapsed_height,
+                &win_post,
+                cfg_post.general.expanded_width,
+                cfg_post.general.expanded_height,
             );
         });
     });

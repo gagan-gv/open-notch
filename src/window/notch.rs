@@ -20,10 +20,10 @@ impl NotchWidget {
         root_box.set_valign(Align::Start);
         root_box.add_css_class("notch-root");
 
-        // Pill / Collapsed Bar Header
+        // Resting Pill (Top-Center)
         let pill_box = GtkBox::new(Orientation::Horizontal, 8);
         pill_box.set_halign(Align::Center);
-        pill_box.set_valign(Align::Center);
+        pill_box.set_valign(Align::Start);
         pill_box.set_size_request(config.general.collapsed_width, config.general.collapsed_height);
         pill_box.add_css_class("notch-pill");
 
@@ -31,7 +31,7 @@ impl NotchWidget {
         pill_indicator.add_css_class("pill-label");
         pill_box.append(&pill_indicator);
 
-        // Expanded Content Container with Revealer
+        // Expanded Shelf with Modules
         let modules = ModulesContainer::new(&config);
         let revealer = Revealer::new();
         revealer.set_transition_type(RevealerTransitionType::SlideDown);
@@ -53,12 +53,11 @@ impl NotchWidget {
         motion_ctrl.connect_enter(move |_, _x, _y| {
             *is_hovered_enter.borrow_mut() = true;
             revealer_enter.set_reveal_child(true);
-            window_enter.set_size_request(
-                cfg_enter.general.expanded_width,
-                cfg_enter.general.expanded_height,
-            );
-            super::position::position_x11_top_center(
+            super::position::update_notch_input_region(
                 &window_enter,
+                true,
+                cfg_enter.general.collapsed_width,
+                cfg_enter.general.collapsed_height,
                 cfg_enter.general.expanded_width,
                 cfg_enter.general.expanded_height,
             );
@@ -82,14 +81,13 @@ impl NotchWidget {
                 move || {
                     if !*is_hovered_check.borrow() {
                         revealer_check.set_reveal_child(false);
-                        window_check.set_size_request(
-                            cfg_check.general.collapsed_width,
-                            cfg_check.general.collapsed_height,
-                        );
-                        super::position::position_x11_top_center(
+                        super::position::update_notch_input_region(
                             &window_check,
+                            false,
                             cfg_check.general.collapsed_width,
                             cfg_check.general.collapsed_height,
+                            cfg_check.general.expanded_width,
+                            cfg_check.general.expanded_height,
                         );
                     }
                 },
