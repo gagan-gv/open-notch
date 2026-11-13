@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Button, Label, Orientation};
+use gtk4::{Align, Box as GtkBox, Button, Label, Orientation, ProgressBar};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +25,7 @@ trait MediaPlayer2Player {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ActiveMediaInfo {
     pub bus_name: String,
+    pub player_display_name: String,
     pub title: String,
     pub artist: String,
     pub status: String,
@@ -39,31 +40,68 @@ pub struct MprisWidget {
 
 impl MprisWidget {
     pub fn new() -> Self {
-        let container = GtkBox::new(Orientation::Vertical, 8);
+        let container = GtkBox::new(Orientation::Vertical, 10);
         container.set_valign(Align::Center);
         container.set_halign(Align::Center);
         container.add_css_class("mpris-widget");
 
-        let track_info = GtkBox::new(Orientation::Vertical, 2);
-        track_info.set_halign(Align::Center);
+        // Top Row: Album Cover + Track Metadata
+        let top_row = GtkBox::new(Orientation::Horizontal, 14);
+        top_row.set_valign(Align::Center);
+        top_row.set_halign(Align::Center);
+
+        // Album Art / Vinyl Disc placeholder (BoringNotch style)
+        let album_art_box = GtkBox::new(Orientation::Vertical, 0);
+        album_art_box.set_size_request(60, 60);
+        album_art_box.set_valign(Align::Center);
+        album_art_box.add_css_class("mpris-album-art");
+
+        let vinyl_icon = Label::new(Some("🎵"));
+        vinyl_icon.set_valign(Align::Center);
+        vinyl_icon.set_halign(Align::Center);
+        vinyl_icon.add_css_class("mpris-vinyl-icon");
+        album_art_box.append(&vinyl_icon);
+
+        // Track Text Info
+        let track_info = GtkBox::new(Orientation::Vertical, 3);
+        track_info.set_valign(Align::Center);
+        track_info.set_halign(Align::Start);
+
+        let app_badge = Label::new(Some("MEDIA"));
+        app_badge.set_halign(Align::Start);
+        app_badge.add_css_class("mpris-app-badge");
 
         let title_label = Label::new(Some("No Media Playing"));
+        title_label.set_halign(Align::Start);
         title_label.add_css_class("mpris-title");
         title_label.set_wrap(true);
-        title_label.set_max_width_chars(38);
+        title_label.set_max_width_chars(32);
         title_label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
 
-        let artist_label = Label::new(Some("Idle"));
+        let artist_label = Label::new(Some("Waiting for playback"));
+        artist_label.set_halign(Align::Start);
         artist_label.add_css_class("mpris-artist");
         artist_label.set_wrap(true);
-        artist_label.set_max_width_chars(38);
+        artist_label.set_max_width_chars(32);
         artist_label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
 
+        track_info.append(&app_badge);
         track_info.append(&title_label);
         track_info.append(&artist_label);
 
-        let controls = GtkBox::new(Orientation::Horizontal, 16);
+        top_row.append(&album_art_box);
+        top_row.append(&track_info);
+
+        // Progress line (BoringNotch aesthetic)
+        let progress_bar = ProgressBar::new();
+        progress_bar.set_fraction(0.35);
+        progress_bar.add_css_class("mpris-progress-bar");
+
+        // Media Controls (Apple glass circle buttons)
+        let controls = GtkBox::new(Orientation::Horizontal, 18);
         controls.set_halign(Align::Center);
+        controls.set_valign(Align::Center);
+        controls.add_css_class("mpris-controls-row");
 
         let prev_btn = Button::with_label("⏮");
         prev_btn.add_css_class("mpris-ctrl-btn");
@@ -78,7 +116,8 @@ impl MprisWidget {
         controls.append(&play_btn);
         controls.append(&next_btn);
 
-        container.append(&track_info);
+        container.append(&top_row);
+        container.append(&progress_bar);
         container.append(&controls);
 
         let is_active = Arc::new(AtomicBool::new(false));
@@ -110,7 +149,7 @@ impl MprisWidget {
             });
         });
 
-        // 1. Background worker thread: continuously polls D-Bus MPRIS every 800ms
+        // Background worker thread: continuously polls D-Bus MPRIS every 800ms
         let shared_worker = Arc::clone(&shared_media);
         std::thread::spawn(move || loop {
             let info = query_active_mpris_player();
@@ -120,10 +159,12 @@ impl MprisWidget {
             std::thread::sleep(Duration::from_millis(800));
         });
 
-        // 2. GTK main thread timer: syncs UI from shared_media
+        // GTK main thread timer: syncs UI from shared_media
         let title_update = title_label.clone();
         let artist_update = artist_label.clone();
+        let badge_update = app_badge.clone();
         let play_btn_update = play_btn.clone();
+        let album_box_update = album_art_box.clone();
         let bus_update = Rc::clone(&active_bus_name);
         let is_active_flag = Arc::clone(&is_active);
         let shared_ui = Arc::clone(&shared_media);
@@ -137,19 +178,24 @@ impl MprisWidget {
                 *last = current.clone();
                 if let Some(info) = current {
                     title_update.set_text(&info.title);
+                    badge_update.set_text(&info.player_display_name.to_uppercase());
                     if info.is_playing {
                         artist_update.set_text(&info.artist);
                         play_btn_update.set_label("⏸");
+                        album_box_update.add_css_class("playing");
                     } else {
                         artist_update.set_text(&format!("{} (Paused)", info.artist));
                         play_btn_update.set_label("▶");
+                        album_box_update.remove_css_class("playing");
                     }
                     *bus_update.borrow_mut() = Some(info.bus_name);
                     is_active_flag.store(true, Ordering::Relaxed);
                 } else {
                     title_update.set_text("No Media Playing");
-                    artist_update.set_text("Idle");
+                    artist_update.set_text("Waiting for playback");
+                    badge_update.set_text("IDLE");
                     play_btn_update.set_label("▶");
+                    album_box_update.remove_css_class("playing");
                     *bus_update.borrow_mut() = None;
                     is_active_flag.store(false, Ordering::Relaxed);
                 }
@@ -177,7 +223,6 @@ fn execute_mpris_action(bus_name: Option<String>, method: &str) -> Result<(), Bo
         let target = if let Some(name) = bus_name {
             name
         } else {
-            // If bus name not cached, discover any available player
             let dbus_proxy = zbus::fdo::DBusProxy::new(&connection).await?;
             let names = dbus_proxy.list_names().await?;
             names
@@ -237,22 +282,32 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                             .map(|v| extract_string_from_variant(v))
                             .unwrap_or_default();
 
-                        // Clean up generic/empty titles
+                        // App badge name (Firefox, Brave, Spotify, Chrome)
                         let clean_bus_name = name.strip_prefix("org.mpris.MediaPlayer2.").unwrap_or(&name);
                         let app_name = clean_bus_name.split('.').next().unwrap_or(clean_bus_name);
+                        let player_display_name = match app_name.to_lowercase().as_str() {
+                            "firefox" => "🦊 Firefox".to_string(),
+                            "chromium" => "🌐 Chromium".to_string(),
+                            "chrome" | "google-chrome" => "🌐 Chrome".to_string(),
+                            "brave" => "🦁 Brave".to_string(),
+                            "spotify" => "🟢 Spotify".to_string(),
+                            "vlc" => "🍊 VLC".to_string(),
+                            other => capitalize_first(other),
+                        };
 
                         if title.trim().is_empty() {
                             title = format!("{} Playback", capitalize_first(app_name));
                         }
 
                         if artist.trim().is_empty() {
-                            artist = format!("{} (Active)", capitalize_first(app_name));
+                            artist = "Streaming Audio/Video".to_string();
                         }
 
                         let is_playing = status.eq_ignore_ascii_case("Playing");
 
                         discovered.push(ActiveMediaInfo {
                             bus_name: name.to_string(),
+                            player_display_name,
                             title,
                             artist,
                             status,
@@ -263,7 +318,7 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
             }
         }
 
-        // 1. Highest priority: Return player actively "Playing" (e.g. YouTube in Chrome/Firefox)
+        // 1. Highest priority: Return player actively "Playing"
         if let Some(playing) = discovered.iter().find(|p| p.is_playing) {
             return Some(playing.clone());
         }
@@ -277,7 +332,6 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
     })
 }
 
-/// Recursively extracts a human-readable string from a D-Bus variant
 fn extract_string_from_variant(val: &zbus::zvariant::OwnedValue) -> String {
     extract_from_value(val)
 }
