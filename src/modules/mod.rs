@@ -10,10 +10,11 @@ use pomodoro::PomodoroWidget;
 
 use crate::config::Config;
 use gtk4::prelude::*;
-use gtk4::{Box as GtkBox, Button, Orientation, Stack, StackSwitcher};
+use gtk4::{Box as GtkBox, Orientation, Stack, StackSwitcher};
 
 pub struct ModulesContainer {
     pub container: GtkBox,
+    #[allow(dead_code)]
     pub mpris: MprisWidget,
 }
 

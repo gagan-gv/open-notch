@@ -2,11 +2,12 @@ use gtk4::prelude::*;
 use gtk4::{Align, Box as GtkBox, Button, Label, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 pub struct MprisWidget {
     pub container: GtkBox,
+    #[allow(dead_code)]
     pub is_active: Arc<AtomicBool>,
 }
 
@@ -102,7 +103,7 @@ fn send_mpris_command(method: &str) -> Result<(), Box<dyn std::error::Error>> {
 
         for name in names {
             if name.starts_with("org.mpris.MediaPlayer2.") {
-                let _: () = connection
+                let _ = connection
                     .call_method(
                         Some(name.as_str()),
                         "/org/mpris/MediaPlayer2",
@@ -110,8 +111,7 @@ fn send_mpris_command(method: &str) -> Result<(), Box<dyn std::error::Error>> {
                         method,
                         &(),
                     )
-                    .await?
-                    .body()?;
+                    .await?;
                 break;
             }
         }

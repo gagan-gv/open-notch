@@ -1,4 +1,4 @@
-use chrono::{Datelike, Local};
+use chrono::Local;
 use gtk4::prelude::*;
 use gtk4::{Align, Box as GtkBox, Calendar, Label, Orientation};
 

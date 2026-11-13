@@ -27,7 +27,7 @@ fn main() {
 fn load_css() {
     let provider = CssProvider::new();
     let css_data = include_str!("../resources/style.css");
-    provider.load_from_data(css_data);
+    provider.load_from_string(css_data);
 
     if let Some(display) = Display::default() {
         gtk4::style_context_add_provider_for_display(
