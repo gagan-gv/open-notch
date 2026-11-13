@@ -10,6 +10,16 @@ use gtk4::{Application, CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION};
 const APP_ID: &str = "com.github.open_notch.OpenNotch";
 
 fn main() {
+    // If not explicitly overridden and not built with layer-shell, default to
+    // X11 / XWayland backend so window managers (Mutter, XFCE, i3, KWin) honor
+    // top-center dock anchoring and always-on-top hints.
+    #[cfg(not(feature = "layer-shell"))]
+    {
+        if std::env::var("GDK_BACKEND").is_err() {
+            std::env::set_var("GDK_BACKEND", "x11");
+        }
+    }
+
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_startup(|_| {

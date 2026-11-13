@@ -57,6 +57,11 @@ impl NotchWidget {
                 cfg_enter.general.expanded_width,
                 cfg_enter.general.expanded_height,
             );
+            super::position::position_x11_top_center(
+                &window_enter,
+                cfg_enter.general.expanded_width,
+                cfg_enter.general.expanded_height,
+            );
         });
 
         let is_hovered_leave = Rc::clone(&is_hovered);
@@ -78,6 +83,11 @@ impl NotchWidget {
                     if !*is_hovered_check.borrow() {
                         revealer_check.set_reveal_child(false);
                         window_check.set_size_request(
+                            cfg_check.general.collapsed_width,
+                            cfg_check.general.collapsed_height,
+                        );
+                        super::position::position_x11_top_center(
+                            &window_check,
                             cfg_check.general.collapsed_width,
                             cfg_check.general.collapsed_height,
                         );
