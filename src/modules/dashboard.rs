@@ -66,11 +66,23 @@ impl DashboardWidget {
         let initial_has_playback = initial_active
             && initial_info
                 .as_ref()
-                .map(|m| !m.title.is_empty() && m.title != "No Media Playing")
+                .map(|m| m.is_playing && !m.title.is_empty() && m.title != "No Media Playing")
                 .unwrap_or(false);
-        media_rev.set_reveal_child(initial_has_playback);
+
+        if initial_has_playback {
+            media_revealer.set_visible(true);
+            media_revealer.set_reveal_child(true);
+            calendar_panel.set_halign(Align::Fill);
+            calendar_panel.set_size_request(-1, -1);
+        } else {
+            media_revealer.set_visible(false);
+            media_revealer.set_reveal_child(false);
+            calendar_panel.set_halign(Align::Center);
+            calendar_panel.set_size_request(400, -1);
+        }
         updater_clone(initial_has_playback, initial_info);
 
+        let calendar_ref = calendar_panel.clone();
         glib::timeout_add_local(Duration::from_millis(500), move || {
             let active = is_active_check.load(Ordering::Relaxed);
             let active_info = super::mpris::get_current_active_media();
@@ -78,10 +90,26 @@ impl DashboardWidget {
             let has_active_playback = active
                 && active_info
                     .as_ref()
-                    .map(|m| !m.title.is_empty() && m.title != "No Media Playing")
+                    .map(|m| m.is_playing && !m.title.is_empty() && m.title != "No Media Playing")
                     .unwrap_or(false);
 
-            media_rev.set_reveal_child(has_active_playback);
+            if has_active_playback {
+                media_rev.set_visible(true);
+                media_rev.set_reveal_child(true);
+                calendar_ref.set_halign(Align::Fill);
+                calendar_ref.set_size_request(-1, -1);
+            } else {
+                media_rev.set_reveal_child(false);
+                calendar_ref.set_halign(Align::Center);
+                calendar_ref.set_size_request(400, -1);
+                let m_rev = media_rev.clone();
+                glib::timeout_add_local_once(Duration::from_millis(260), move || {
+                    if !m_rev.reveals_child() {
+                        m_rev.set_visible(false);
+                    }
+                });
+            }
+
             updater_clone(has_active_playback, active_info);
             glib::ControlFlow::Continue
         });
