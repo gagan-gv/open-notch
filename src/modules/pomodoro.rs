@@ -216,30 +216,51 @@ impl PomodoroWidget {
         let refresh_presets_tick = Rc::clone(&refresh_presets);
 
         glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
-            let mut s = state_tick.borrow_mut();
-            if s.is_running {
-                if s.remaining_seconds > 0 {
-                    s.remaining_seconds -= 1;
-                    timer_label_tick.set_text(&format_time(s.remaining_seconds));
-                } else {
-                    // Time up! Auto switch mode
-                    if s.mode == PomodoroMode::Work {
-                        s.mode = PomodoroMode::Break;
-                        s.remaining_seconds = s.break_seconds;
-                        mode_label_tick.set_text("☕ Short Break");
-                        switch_mode_btn_tick.set_label("Switch to Focus");
+            let mut time_is_up = false;
+            let mut new_mode = PomodoroMode::Work;
+
+            {
+                let mut s = state_tick.borrow_mut();
+                if s.is_running {
+                    if s.remaining_seconds > 0 {
+                        s.remaining_seconds -= 1;
+                        timer_label_tick.set_text(&format_time(s.remaining_seconds));
                     } else {
-                        s.mode = PomodoroMode::Work;
-                        s.remaining_seconds = s.work_seconds;
-                        mode_label_tick.set_text("⚡ Focus Session");
-                        switch_mode_btn_tick.set_label("Switch to Break");
+                        // Time up! Auto switch mode
+                        time_is_up = true;
+                        if s.mode == PomodoroMode::Work {
+                            s.mode = PomodoroMode::Break;
+                            s.remaining_seconds = s.break_seconds;
+                            mode_label_tick.set_text("☕ Short Break");
+                            switch_mode_btn_tick.set_label("Switch to Focus");
+                        } else {
+                            s.mode = PomodoroMode::Work;
+                            s.remaining_seconds = s.work_seconds;
+                            mode_label_tick.set_text("⚡ Focus Session");
+                            switch_mode_btn_tick.set_label("Switch to Break");
+                        }
+                        s.is_running = false;
+                        toggle_btn_tick.set_label("Start");
+                        timer_label_tick.set_text(&format_time(s.remaining_seconds));
+                        new_mode = s.mode;
                     }
-                    s.is_running = false;
-                    toggle_btn_tick.set_label("Start");
-                    timer_label_tick.set_text(&format_time(s.remaining_seconds));
-                    refresh_presets_tick();
                 }
+            } // RefCell borrow_mut is explicitly dropped here before calling UI refresh
+
+            if time_is_up {
+                refresh_presets_tick();
+
+                // Send desktop notification when timer completes
+                let (summary, body) = if new_mode == PomodoroMode::Break {
+                    ("⚡ Focus Session Complete!", "Great job! Time for a short break.")
+                } else {
+                    ("☕ Break Finished!", "Ready to dive back into focus mode?")
+                };
+                let _ = std::process::Command::new("notify-send")
+                    .args(["-a", "OpenNotch", summary, body])
+                    .spawn();
             }
+
             glib::ControlFlow::Continue
         });
 
@@ -281,21 +302,23 @@ impl PomodoroWidget {
         let refresh_presets_switch = Rc::clone(&refresh_presets);
 
         switch_mode_btn.connect_clicked(move |_| {
-            let mut s = state_switch.borrow_mut();
-            s.is_running = false;
-            toggle_btn_switch.set_label("Start");
-            if s.mode == PomodoroMode::Work {
-                s.mode = PomodoroMode::Break;
-                s.remaining_seconds = s.break_seconds;
-                mode_label_switch.set_text("☕ Short Break");
-                switch_btn_label.set_label("Switch to Focus");
-            } else {
-                s.mode = PomodoroMode::Work;
-                s.remaining_seconds = s.work_seconds;
-                mode_label_switch.set_text("⚡ Focus Session");
-                switch_btn_label.set_label("Switch to Break");
-            }
-            timer_label_switch.set_text(&format_time(s.remaining_seconds));
+            {
+                let mut s = state_switch.borrow_mut();
+                s.is_running = false;
+                toggle_btn_switch.set_label("Start");
+                if s.mode == PomodoroMode::Work {
+                    s.mode = PomodoroMode::Break;
+                    s.remaining_seconds = s.break_seconds;
+                    mode_label_switch.set_text("☕ Short Break");
+                    switch_btn_label.set_label("Switch to Focus");
+                } else {
+                    s.mode = PomodoroMode::Work;
+                    s.remaining_seconds = s.work_seconds;
+                    mode_label_switch.set_text("⚡ Focus Session");
+                    switch_btn_label.set_label("Switch to Break");
+                }
+                timer_label_switch.set_text(&format_time(s.remaining_seconds));
+            } // RefCell borrow_mut is explicitly dropped here before calling UI refresh
             refresh_presets_switch();
         });
 
