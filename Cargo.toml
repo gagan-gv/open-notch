@@ -7,10 +7,14 @@ description = "A sleek, fluid, and dynamic notch overlay for Linux desktops"
 license = "MIT"
 readme = "README.md"
 
+[features]
+default = []
+layer-shell = ["dep:gtk4-layer-shell"]
+
 [dependencies]
-# GUI Toolkit & Layer Shell
+# GUI Toolkit
 gtk4 = { version = "0.9", features = ["v4_12"] }
-gtk4-layer-shell = "0.4"
+gtk4-layer-shell = { version = "0.4", optional = true }
 glib = "0.20"
 
 # Async & D-Bus (MPRIS Media Controller)

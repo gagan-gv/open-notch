@@ -63,8 +63,8 @@ Linux environments operate across multiple window managers and display protocols
 ### System Prerequisites (Ubuntu / Debian / Zorin OS)
 
 ```bash
-# Install GTK4 and Layer-Shell development headers
-sudo apt update && sudo apt install -y build-essential libgtk-4-dev libgtk4-layer-shell-dev pkg-config
+# Install GTK4 and build dependencies
+sudo apt update && sudo apt install -y build-essential libgtk-4-dev pkg-config
 
 # Install Rust toolchain (if not already installed)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
