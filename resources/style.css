@@ -215,6 +215,22 @@ window {
     font-size: 11px;
 }
 
+.mpris-progress-box {
+    margin: 4px 0 2px 0;
+    min-width: 320px;
+}
+
+.mpris-time-row {
+    margin-bottom: 3px;
+}
+
+.mpris-time-label {
+    color: #64748b;
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: 600;
+}
+
 .mpris-progress-bar trough {
     min-height: 4px;
     border-radius: 2px;

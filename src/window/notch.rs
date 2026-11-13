@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::modules::ModulesContainer;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, GestureClick, Label,
-    Orientation, Revealer, RevealerTransitionType,
+    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, Label, Orientation, Revealer,
+    RevealerTransitionType,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -139,16 +139,6 @@ impl NotchWidget {
         });
 
         root_box.add_controller(motion_ctrl);
-
-        // Click Gesture: clicking anywhere inside the notch keeps it open
-        let click_ctrl = GestureClick::new();
-        let is_hovered_click = Rc::clone(&is_hovered);
-        let revealer_click = revealer.clone();
-        click_ctrl.connect_pressed(move |_, _, _, _| {
-            *is_hovered_click.borrow_mut() = true;
-            revealer_click.set_reveal_child(true);
-        });
-        root_box.add_controller(click_ctrl);
 
         Self { root_box }
     }

@@ -15,6 +15,9 @@ trait MediaPlayer2Player {
     fn playback_status(&self) -> zbus::Result<String>;
 
     #[zbus(property)]
+    fn position(&self) -> zbus::Result<i64>;
+
+    #[zbus(property)]
     fn metadata(&self) -> zbus::Result<std::collections::HashMap<String, zbus::zvariant::OwnedValue>>;
 
     fn play_pause(&self) -> zbus::Result<()>;
@@ -22,7 +25,7 @@ trait MediaPlayer2Player {
     fn previous(&self) -> zbus::Result<()>;
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ActiveMediaInfo {
     pub bus_name: String,
     pub player_display_name: String,
@@ -30,6 +33,9 @@ pub struct ActiveMediaInfo {
     pub artist: String,
     pub status: String,
     pub is_playing: bool,
+    pub position_sec: i64,
+    pub length_sec: i64,
+    pub progress_fraction: f64,
 }
 
 pub struct MprisWidget {
@@ -40,7 +46,7 @@ pub struct MprisWidget {
 
 impl MprisWidget {
     pub fn new() -> Self {
-        let container = GtkBox::new(Orientation::Vertical, 10);
+        let container = GtkBox::new(Orientation::Vertical, 8);
         container.set_valign(Align::Center);
         container.set_halign(Align::Center);
         container.add_css_class("mpris-widget");
@@ -92,10 +98,32 @@ impl MprisWidget {
         top_row.append(&album_art_box);
         top_row.append(&track_info);
 
-        // Progress line (BoringNotch aesthetic)
+        // Progress Bar & Time Labels (BoringNotch / NotchNook style)
+        let progress_box = GtkBox::new(Orientation::Vertical, 3);
+        progress_box.set_valign(Align::Center);
+        progress_box.add_css_class("mpris-progress-box");
+
+        let time_row = GtkBox::new(Orientation::Horizontal, 0);
+        time_row.add_css_class("mpris-time-row");
+
+        let curr_time_label = Label::new(Some("0:00"));
+        curr_time_label.set_halign(Align::Start);
+        curr_time_label.set_hexpand(true);
+        curr_time_label.add_css_class("mpris-time-label");
+
+        let total_time_label = Label::new(Some("--:--"));
+        total_time_label.set_halign(Align::End);
+        total_time_label.add_css_class("mpris-time-label");
+
+        time_row.append(&curr_time_label);
+        time_row.append(&total_time_label);
+
         let progress_bar = ProgressBar::new();
-        progress_bar.set_fraction(0.35);
+        progress_bar.set_fraction(0.0);
         progress_bar.add_css_class("mpris-progress-bar");
+
+        progress_box.append(&time_row);
+        progress_box.append(&progress_bar);
 
         // Media Controls (Apple glass circle buttons)
         let controls = GtkBox::new(Orientation::Horizontal, 18);
@@ -117,7 +145,7 @@ impl MprisWidget {
         controls.append(&next_btn);
 
         container.append(&top_row);
-        container.append(&progress_bar);
+        container.append(&progress_box);
         container.append(&controls);
 
         let is_active = Arc::new(AtomicBool::new(false));
@@ -149,14 +177,14 @@ impl MprisWidget {
             });
         });
 
-        // Background worker thread: continuously polls D-Bus MPRIS every 800ms
+        // Background worker thread: continuously polls D-Bus MPRIS every 600ms
         let shared_worker = Arc::clone(&shared_media);
         std::thread::spawn(move || loop {
             let info = query_active_mpris_player();
             if let Ok(mut lock) = shared_worker.lock() {
                 *lock = info;
             }
-            std::thread::sleep(Duration::from_millis(800));
+            std::thread::sleep(Duration::from_millis(600));
         });
 
         // GTK main thread timer: syncs UI from shared_media
@@ -165,12 +193,15 @@ impl MprisWidget {
         let badge_update = app_badge.clone();
         let play_btn_update = play_btn.clone();
         let album_box_update = album_art_box.clone();
+        let progress_bar_update = progress_bar.clone();
+        let curr_time_update = curr_time_label.clone();
+        let total_time_update = total_time_label.clone();
         let bus_update = Rc::clone(&active_bus_name);
         let is_active_flag = Arc::clone(&is_active);
         let shared_ui = Arc::clone(&shared_media);
         let last_rendered = Rc::new(RefCell::new(None::<ActiveMediaInfo>));
 
-        glib::timeout_add_local(Duration::from_millis(500), move || {
+        glib::timeout_add_local(Duration::from_millis(400), move || {
             let current = shared_ui.lock().ok().and_then(|g| g.clone());
             let mut last = last_rendered.borrow_mut();
 
@@ -179,15 +210,30 @@ impl MprisWidget {
                 if let Some(info) = current {
                     title_update.set_text(&info.title);
                     badge_update.set_text(&info.player_display_name.to_uppercase());
+
                     if info.is_playing {
                         artist_update.set_text(&info.artist);
                         play_btn_update.set_label("⏸");
-                        album_box_update.add_css_class("playing");
+                        if !album_box_update.has_css_class("playing") {
+                            album_box_update.add_css_class("playing");
+                        }
                     } else {
                         artist_update.set_text(&format!("{} (Paused)", info.artist));
                         play_btn_update.set_label("▶");
-                        album_box_update.remove_css_class("playing");
+                        if album_box_update.has_css_class("playing") {
+                            album_box_update.remove_css_class("playing");
+                        }
                     }
+
+                    // Update live progress bar & time labels
+                    progress_bar_update.set_fraction(info.progress_fraction);
+                    curr_time_update.set_text(&format_duration(info.position_sec));
+                    if info.length_sec > 0 {
+                        total_time_update.set_text(&format_duration(info.length_sec));
+                    } else {
+                        total_time_update.set_text("--:--");
+                    }
+
                     *bus_update.borrow_mut() = Some(info.bus_name);
                     is_active_flag.store(true, Ordering::Relaxed);
                 } else {
@@ -195,7 +241,12 @@ impl MprisWidget {
                     artist_update.set_text("Waiting for playback");
                     badge_update.set_text("IDLE");
                     play_btn_update.set_label("▶");
-                    album_box_update.remove_css_class("playing");
+                    if album_box_update.has_css_class("playing") {
+                        album_box_update.remove_css_class("playing");
+                    }
+                    progress_bar_update.set_fraction(0.0);
+                    curr_time_update.set_text("0:00");
+                    total_time_update.set_text("--:--");
                     *bus_update.borrow_mut() = None;
                     is_active_flag.store(false, Ordering::Relaxed);
                 }
@@ -272,6 +323,22 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                         let status = proxy.playback_status().await.unwrap_or_else(|_| "Stopped".to_string());
                         let metadata = proxy.metadata().await.unwrap_or_default();
 
+                        // Query track position and total length
+                        let position_us = proxy.position().await.unwrap_or(0);
+                        let length_us = metadata
+                            .get("mpris:length")
+                            .and_then(|v| extract_int_from_variant(v))
+                            .unwrap_or(0);
+
+                        let pos_sec = (position_us / 1_000_000).max(0);
+                        let len_sec = (length_us / 1_000_000).max(0);
+
+                        let progress_fraction = if len_sec > 0 {
+                            (pos_sec as f64 / len_sec as f64).clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        };
+
                         let mut title = metadata
                             .get("xesam:title")
                             .map(|v| extract_string_from_variant(v))
@@ -312,6 +379,9 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                             artist,
                             status,
                             is_playing,
+                            position_sec: pos_sec,
+                            length_sec: len_sec,
+                            progress_fraction,
                         });
                     }
                 }
@@ -352,6 +422,28 @@ fn extract_from_value(val: &zbus::zvariant::Value) -> String {
         }
         _ => String::new(),
     }
+}
+
+fn extract_int_from_variant(val: &zbus::zvariant::OwnedValue) -> Option<i64> {
+    extract_int_from_value(val)
+}
+
+fn extract_int_from_value(val: &zbus::zvariant::Value) -> Option<i64> {
+    match val {
+        zbus::zvariant::Value::I64(v) => Some(*v),
+        zbus::zvariant::Value::U64(v) => Some(*v as i64),
+        zbus::zvariant::Value::I32(v) => Some(*v as i64),
+        zbus::zvariant::Value::U32(v) => Some(*v as i64),
+        zbus::zvariant::Value::Value(inner) => extract_int_from_value(inner),
+        _ => None,
+    }
+}
+
+fn format_duration(seconds: i64) -> String {
+    let s = seconds.max(0);
+    let m = s / 60;
+    let rem_s = s % 60;
+    format!("{}:{:02}", m, rem_s)
 }
 
 fn capitalize_first(s: &str) -> String {
