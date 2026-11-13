@@ -36,29 +36,46 @@ impl CalendarWidget {
         let now = Local::now();
 
         // ------------------------------------------------------------------
-        // Left Column: Today's Glance Card (Date, Weekday, Live Clock)
+        // Left Column: Glance Header + Today's Agenda Card
         // ------------------------------------------------------------------
-        let glance_card = GtkBox::new(Orientation::Vertical, 6);
+        let left_col = GtkBox::new(Orientation::Vertical, 8);
+        left_col.set_valign(Align::Center);
+        left_col.set_halign(Align::Center);
+        left_col.set_size_request(240, -1);
+
+        // Compact Apple-style Glance Header
+        let glance_card = GtkBox::new(Orientation::Horizontal, 12);
         glance_card.set_valign(Align::Center);
-        glance_card.set_halign(Align::Center);
+        glance_card.set_hexpand(true);
         glance_card.add_css_class("calendar-glance-card");
+
+        let glance_text_box = GtkBox::new(Orientation::Vertical, 2);
+        glance_text_box.set_hexpand(true);
+        glance_text_box.set_valign(Align::Center);
 
         let weekday_label = Label::new(Some(&now.format("%A").to_string().to_uppercase()));
         weekday_label.add_css_class("glance-weekday");
-
-        let day_label = Label::new(Some(&now.format("%d").to_string()));
-        day_label.add_css_class("glance-day-number");
+        weekday_label.set_halign(Align::Start);
 
         let month_year_label = Label::new(Some(&now.format("%B %Y").to_string()));
         month_year_label.add_css_class("glance-month-year");
+        month_year_label.set_halign(Align::Start);
 
         let time_label = Label::new(Some(&now.format("%I:%M %p").to_string()));
         time_label.add_css_class("glance-live-clock");
+        time_label.set_halign(Align::Start);
 
-        glance_card.append(&weekday_label);
+        glance_text_box.append(&weekday_label);
+        glance_text_box.append(&month_year_label);
+        glance_text_box.append(&time_label);
+
+        let day_label = Label::new(Some(&now.format("%d").to_string()));
+        day_label.add_css_class("glance-day-number");
+        day_label.set_valign(Align::Center);
+        day_label.set_halign(Align::End);
+
+        glance_card.append(&glance_text_box);
         glance_card.append(&day_label);
-        glance_card.append(&month_year_label);
-        glance_card.append(&time_label);
 
         // Update live clock every second
         let time_update = time_label.clone();
@@ -75,23 +92,10 @@ impl CalendarWidget {
             glib::ControlFlow::Continue
         });
 
-        // ------------------------------------------------------------------
-        // Right Column: Monthly Calendar + Today's Agenda Card
-        // ------------------------------------------------------------------
-        let right_col = GtkBox::new(Orientation::Vertical, 8);
-        right_col.set_valign(Align::Center);
-        right_col.set_halign(Align::Center);
-
-        // Mini Monthly Calendar
-        let calendar_box = GtkBox::new(Orientation::Vertical, 2);
-        calendar_box.add_css_class("calendar-grid-box");
-        let calendar = Calendar::new();
-        calendar.add_css_class("mini-calendar");
-        calendar_box.append(&calendar);
-
         // Agenda / Events Card
         let agenda_card = GtkBox::new(Orientation::Vertical, 6);
         agenda_card.add_css_class("agenda-card");
+        agenda_card.set_hexpand(true);
 
         // Agenda Header with Title + [+] Quick Add button
         let agenda_header = GtkBox::new(Orientation::Horizontal, 8);
@@ -115,8 +119,10 @@ impl CalendarWidget {
 
         let events_scroll = ScrolledWindow::new();
         events_scroll.set_policy(PolicyType::Never, PolicyType::Automatic);
-        events_scroll.set_min_content_height(55);
-        events_scroll.set_max_content_height(90);
+        events_scroll.set_has_frame(false);
+        events_scroll.set_propagate_natural_height(true);
+        events_scroll.set_min_content_height(60);
+        events_scroll.set_max_content_height(95);
         events_scroll.set_child(Some(&events_list_box));
 
         // Inline Add Event Form (revealed when clicking "+ Add")
@@ -124,7 +130,7 @@ impl CalendarWidget {
         add_revealer.set_transition_type(RevealerTransitionType::SlideDown);
         add_revealer.set_reveal_child(false);
 
-        let add_form_box = GtkBox::new(Orientation::Horizontal, 6);
+        let add_form_box = GtkBox::new(Orientation::Horizontal, 4);
         add_form_box.add_css_class("agenda-add-row");
 
         let title_entry = Entry::new();
@@ -133,9 +139,9 @@ impl CalendarWidget {
         title_entry.set_hexpand(true);
 
         let time_entry = Entry::new();
-        time_entry.set_placeholder_text(Some("Time (e.g. 2:00 PM)"));
+        time_entry.set_placeholder_text(Some("Time"));
         time_entry.add_css_class("agenda-input");
-        time_entry.set_width_chars(14);
+        time_entry.set_width_chars(9);
 
         let save_event_btn = Button::with_label("Add");
         save_event_btn.add_css_class("agenda-submit-btn");
@@ -149,10 +155,25 @@ impl CalendarWidget {
         agenda_card.append(&add_revealer);
         agenda_card.append(&events_scroll);
 
-        right_col.append(&calendar_box);
-        right_col.append(&agenda_card);
+        left_col.append(&glance_card);
+        left_col.append(&agenda_card);
 
-        container.append(&glance_card);
+        // ------------------------------------------------------------------
+        // Right Column: Monthly Calendar View
+        // ------------------------------------------------------------------
+        let right_col = GtkBox::new(Orientation::Vertical, 4);
+        right_col.set_valign(Align::Center);
+        right_col.set_halign(Align::Center);
+
+        // Mini Monthly Calendar
+        let calendar_box = GtkBox::new(Orientation::Vertical, 2);
+        calendar_box.add_css_class("calendar-grid-box");
+        let calendar = Calendar::new();
+        calendar.add_css_class("mini-calendar");
+        calendar_box.append(&calendar);
+        right_col.append(&calendar_box);
+
+        container.append(&left_col);
         container.append(&right_col);
 
         // Toggle inline Add form

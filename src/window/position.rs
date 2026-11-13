@@ -109,7 +109,7 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
         );
 
         // 3. Move and size window to top-center
-        XMoveResizeWindow(xdisplay, xid, target_x, target_y, width, height);
+        XMoveResizeWindow(xdisplay, xid, target_x, target_y, width, height.max(450));
         XFlush(xdisplay);
     }
 }
@@ -127,8 +127,8 @@ pub fn update_notch_input_region(
 ) {
     if let Some(surface) = window.surface() {
         let rect = if expanded {
-            // Generous bounding box so child widgets never clip click events
-            RectangleInt::new(0, 0, expanded_w, expanded_h.max(420))
+            // Generous bounding box so child widgets never clip click or scroll events
+            RectangleInt::new(0, 0, expanded_w, expanded_h.max(480))
         } else {
             let offset_x = (expanded_w - collapsed_w) / 2;
             RectangleInt::new(offset_x, 0, collapsed_w, collapsed_h + 4)

@@ -39,9 +39,9 @@ impl Default for Config {
             general: GeneralConfig {
                 collapsed_width: 180,
                 collapsed_height: 32,
-                expanded_width: 540,
-                expanded_height: 380,
-                hover_debounce_ms: 400,
+                expanded_width: 560,
+                expanded_height: 420,
+                hover_debounce_ms: 450,
             },
             modules: ModulesConfig {
                 default_view: "calendar".to_string(),

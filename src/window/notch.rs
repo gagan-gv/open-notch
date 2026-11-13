@@ -2,12 +2,13 @@ use crate::config::Config;
 use crate::modules::ModulesContainer;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, Label, Orientation, Revealer,
+    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, EventControllerScroll,
+    EventControllerScrollFlags, Label, Orientation, PropagationPhase, Revealer,
     RevealerTransitionType,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct NotchWidget {
     pub root_box: GtkBox,
@@ -80,16 +81,23 @@ impl NotchWidget {
         root_box.append(&pill_box);
         root_box.append(&revealer);
 
-        // Motion Controller for Hover Events
+        // Motion & Scroll Controllers for Hover & Scroll Events
         let motion_ctrl = EventControllerMotion::new();
+        let scroll_ctrl = EventControllerScroll::new(EventControllerScrollFlags::BOTH_AXES);
+        scroll_ctrl.set_propagation_phase(PropagationPhase::Capture);
+
         let is_hovered = Rc::new(RefCell::new(false));
+        let last_activity = Rc::new(RefCell::new(Instant::now()));
+
         let revealer_enter = revealer.clone();
         let is_hovered_enter = Rc::clone(&is_hovered);
+        let last_activity_enter = Rc::clone(&last_activity);
         let window_enter = window.clone();
         let cfg_enter = config.clone();
 
         motion_ctrl.connect_enter(move |_, _x, _y| {
             *is_hovered_enter.borrow_mut() = true;
+            *last_activity_enter.borrow_mut() = Instant::now();
             revealer_enter.set_reveal_child(true);
             super::position::update_notch_input_region(
                 &window_enter,
@@ -101,11 +109,41 @@ impl NotchWidget {
             );
         });
 
+        let is_hovered_motion = Rc::clone(&is_hovered);
+        let last_activity_motion = Rc::clone(&last_activity);
+        motion_ctrl.connect_motion(move |_, _x, _y| {
+            *is_hovered_motion.borrow_mut() = true;
+            *last_activity_motion.borrow_mut() = Instant::now();
+        });
+
+        // Ensure scrolling inside the notch (e.g. agenda list, notes) keeps the notch expanded
+        let is_hovered_scroll = Rc::clone(&is_hovered);
+        let last_activity_scroll = Rc::clone(&last_activity);
+        let revealer_scroll = revealer.clone();
+        let window_scroll = window.clone();
+        let cfg_scroll = config.clone();
+
+        scroll_ctrl.connect_scroll(move |_, _dx, _dy| {
+            *is_hovered_scroll.borrow_mut() = true;
+            *last_activity_scroll.borrow_mut() = Instant::now();
+            revealer_scroll.set_reveal_child(true);
+            super::position::update_notch_input_region(
+                &window_scroll,
+                true,
+                cfg_scroll.general.collapsed_width,
+                cfg_scroll.general.collapsed_height,
+                cfg_scroll.general.expanded_width,
+                cfg_scroll.general.expanded_height,
+            );
+            glib::Propagation::Proceed
+        });
+
         let is_hovered_leave = Rc::clone(&is_hovered);
         let revealer_leave = revealer.clone();
         let window_leave = window.clone();
         let cfg_leave = config.clone();
         let motion_ctrl_leave = motion_ctrl.clone();
+        let last_activity_leave = Rc::clone(&last_activity);
 
         motion_ctrl.connect_leave(move |_| {
             let is_hovered_check = Rc::clone(&is_hovered_leave);
@@ -113,6 +151,7 @@ impl NotchWidget {
             let window_check = window_leave.clone();
             let cfg_check = cfg_leave.clone();
             let ctrl_check = motion_ctrl_leave.clone();
+            let last_activity_check = Rc::clone(&last_activity_leave);
 
             // Debounce before collapsing
             glib::timeout_add_local_once(
@@ -120,6 +159,13 @@ impl NotchWidget {
                 move || {
                     // If pointer is still inside the notch (or clicking interactive children), do not close
                     if ctrl_check.contains_pointer() {
+                        *is_hovered_check.borrow_mut() = true;
+                        return;
+                    }
+
+                    // If user scrolled or interacted within the debounce window, do not close
+                    let recent_cutoff = Duration::from_millis(cfg_check.general.hover_debounce_ms + 100);
+                    if last_activity_check.borrow().elapsed() < recent_cutoff {
                         *is_hovered_check.borrow_mut() = true;
                         return;
                     }
@@ -139,6 +185,7 @@ impl NotchWidget {
         });
 
         root_box.add_controller(motion_ctrl);
+        root_box.add_controller(scroll_ctrl);
 
         Self { root_box }
     }
