@@ -157,6 +157,14 @@ impl NotchWidget {
             glib::timeout_add_local_once(
                 Duration::from_millis(cfg_leave.general.hover_debounce_ms),
                 move || {
+                    // If a text entry or interactive child currently has keyboard focus, keep open while typing
+                    if let Some(focus_widget) = gtk4::prelude::GtkWindowExt::focus(&window_check) {
+                        if focus_widget.is::<gtk4::Entry>() || focus_widget.is::<gtk4::TextView>() {
+                            *is_hovered_check.borrow_mut() = true;
+                            return;
+                        }
+                    }
+
                     // If pointer is still inside the notch (or clicking interactive children), do not close
                     if ctrl_check.contains_pointer() {
                         *is_hovered_check.borrow_mut() = true;

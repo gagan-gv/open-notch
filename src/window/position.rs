@@ -70,14 +70,17 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
 
         let atom_atom = XInternAtom(xdisplay, CString::new("ATOM").unwrap().as_ptr(), 0);
 
-        // 1. _NET_WM_WINDOW_TYPE = _NET_WM_WINDOW_TYPE_DOCK
+        // 1. _NET_WM_WINDOW_TYPE = UTILITY (with DOCK fallback) so window can receive keyboard input
         let net_wm_window_type = CString::new("_NET_WM_WINDOW_TYPE").unwrap();
         let atom_window_type = XInternAtom(xdisplay, net_wm_window_type.as_ptr(), 0);
+
+        let net_wm_type_utility = CString::new("_NET_WM_WINDOW_TYPE_UTILITY").unwrap();
+        let atom_type_utility = XInternAtom(xdisplay, net_wm_type_utility.as_ptr(), 0);
 
         let net_wm_type_dock = CString::new("_NET_WM_WINDOW_TYPE_DOCK").unwrap();
         let atom_type_dock = XInternAtom(xdisplay, net_wm_type_dock.as_ptr(), 0);
 
-        let dock_atoms = [atom_type_dock];
+        let type_atoms = [atom_type_utility, atom_type_dock];
         XChangeProperty(
             xdisplay,
             xid,
@@ -85,18 +88,32 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
             atom_atom,
             32,
             0, // PropModeReplace
-            dock_atoms.as_ptr() as *const u8,
-            1,
+            type_atoms.as_ptr() as *const u8,
+            2,
         );
 
-        // 2. _NET_WM_STATE = _NET_WM_STATE_ABOVE
+        // 2. _NET_WM_STATE = ABOVE + STICKY + SKIP_TASKBAR + SKIP_PAGER
         let net_wm_state = CString::new("_NET_WM_STATE").unwrap();
         let atom_state = XInternAtom(xdisplay, net_wm_state.as_ptr(), 0);
 
         let net_wm_state_above = CString::new("_NET_WM_STATE_ABOVE").unwrap();
         let atom_state_above = XInternAtom(xdisplay, net_wm_state_above.as_ptr(), 0);
 
-        let state_atoms = [atom_state_above];
+        let net_wm_state_sticky = CString::new("_NET_WM_STATE_STICKY").unwrap();
+        let atom_state_sticky = XInternAtom(xdisplay, net_wm_state_sticky.as_ptr(), 0);
+
+        let net_wm_state_skip_taskbar = CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap();
+        let atom_state_skip_taskbar = XInternAtom(xdisplay, net_wm_state_skip_taskbar.as_ptr(), 0);
+
+        let net_wm_state_skip_pager = CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap();
+        let atom_state_skip_pager = XInternAtom(xdisplay, net_wm_state_skip_pager.as_ptr(), 0);
+
+        let state_atoms = [
+            atom_state_above,
+            atom_state_sticky,
+            atom_state_skip_taskbar,
+            atom_state_skip_pager,
+        ];
         XChangeProperty(
             xdisplay,
             xid,
@@ -105,7 +122,7 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
             32,
             0, // PropModeReplace
             state_atoms.as_ptr() as *const u8,
-            1,
+            4,
         );
 
         // 3. Move and size window to top-center

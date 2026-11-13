@@ -1,4 +1,5 @@
 pub mod calendar;
+pub mod calendar_sync;
 pub mod mpris;
 pub mod notes;
 pub mod pomodoro;

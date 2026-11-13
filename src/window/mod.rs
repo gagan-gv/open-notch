@@ -16,6 +16,7 @@ pub fn build_ui(app: &Application, config: Config) {
         .default_width(config.general.expanded_width)
         .default_height(config.general.expanded_height)
         .decorated(false)
+        .focusable(true)
         .build();
 
     #[cfg(feature = "layer-shell")]
