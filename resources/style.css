@@ -524,9 +524,273 @@ window {
     border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.notes-editor {
+/* --------------------------------------------------------------------------
+   8. BoringNotch Unified Dashboard (Matching User Screenshot)
+   -------------------------------------------------------------------------- */
+.notch-top-bar {
+    padding: 0 4px 6px 4px;
+}
+
+.top-nav-btn {
     background: transparent;
-    color: #e2e8f0;
+    color: #64748b;
+    font-size: 13px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    border: none;
+    transition: all 150ms ease;
+}
+
+.top-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+}
+
+.top-nav-btn.top-nav-active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+.top-settings-btn {
+    background: transparent;
+    color: #64748b;
+    font-size: 13px;
+    padding: 2px 6px;
+    border: none;
+    transition: all 150ms ease;
+}
+
+.top-settings-btn:hover {
+    color: #f1f5f9;
+}
+
+.top-battery-badge {
+    color: #cbd5e1;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    padding: 2px 4px;
+}
+
+/* Left Panel: Media Player */
+.dashboard-media-panel {
+    padding: 2px;
+}
+
+.dashboard-album-art {
+    background: linear-gradient(135deg, #c2410c, #ea580c, #fb923c);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    min-width: 96px;
+    min-height: 96px;
+}
+
+.dashboard-speaker-icon {
+    font-size: 26px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 18px;
+}
+
+.dashboard-app-badge {
     font-size: 12px;
-    line-height: 1.5;
+    margin: 4px 6px 4px 0;
+}
+
+.dashboard-track-title {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+.dashboard-track-artist {
+    color: #f59e0b;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 1px;
+}
+
+.dashboard-track-sub {
+    color: #64748b;
+    font-size: 10px;
+    margin-bottom: 4px;
+}
+
+/* Amber Media Progress Bar */
+.dashboard-progress-bar trough {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    min-height: 4px;
+}
+
+.dashboard-progress-bar progress {
+    background: #f59e0b;
+    border-radius: 3px;
+    min-height: 4px;
+}
+
+.dashboard-time-row {
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.dashboard-time-label {
+    color: #64748b;
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+/* Playback Control Buttons */
+.dashboard-controls-row {
+    margin-top: 2px;
+}
+
+.dashboard-ctrl-btn {
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 13px;
+    border: none;
+    padding: 2px 4px;
+    transition: all 120ms ease;
+}
+
+.dashboard-ctrl-btn:hover {
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+.dashboard-play-btn {
+    background: transparent;
+    color: #ffffff;
+    font-size: 16px;
+    border: none;
+    padding: 2px 4px;
+    transition: all 120ms ease;
+}
+
+.dashboard-play-btn:hover {
+    transform: scale(1.1);
+}
+
+.dashboard-heart-btn {
+    background: transparent;
+    color: #64748b;
+    font-size: 14px;
+    border: none;
+    padding: 2px 4px;
+    transition: all 120ms ease;
+}
+
+.dashboard-heart-btn:hover {
+    color: #ef4444;
+}
+
+.heart-active {
+    color: #ef4444;
+}
+
+/* Center Vertical Divider */
+.dashboard-divider {
+    background: rgba(255, 255, 255, 0.08);
+    min-width: 1px;
+    margin: 0 4px;
+}
+
+/* Right Panel: Calendar Week Strip & Agenda */
+.dashboard-calendar-panel {
+    padding: 2px;
+}
+
+.dashboard-header-strip {
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.strip-month-box {
+    min-width: 38px;
+    margin-right: 4px;
+}
+
+.strip-month-label {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.strip-year-label {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.strip-weekday-label {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.strip-weekday-today {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.strip-day-label {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 4px;
+}
+
+/* Today highlighted in vibrant blue circular badge */
+.strip-day-today {
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 11px;
+    padding: 2px 6px;
+    min-width: 22px;
+    min-height: 22px;
+}
+
+/* Dashboard Events List with Amber Vertical Bars */
+.dashboard-events-list {
+    padding: 2px 0;
+}
+
+.dashboard-event-item {
+    margin-bottom: 6px;
+}
+
+.dashboard-amber-bar {
+    background: #f59e0b;
+    border-radius: 2px;
+    min-width: 3px;
+    min-height: 26px;
+}
+
+.dashboard-event-title {
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.dashboard-event-time {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
 }

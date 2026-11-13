@@ -39,8 +39,8 @@ impl Default for Config {
             general: GeneralConfig {
                 collapsed_width: 180,
                 collapsed_height: 32,
-                expanded_width: 630,
-                expanded_height: 430,
+                expanded_width: 775,
+                expanded_height: 230,
                 hover_debounce_ms: 300,
             },
             modules: ModulesConfig {

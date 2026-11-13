@@ -3,8 +3,40 @@ use gtk4::{Align, Box as GtkBox, Button, Label, Orientation, ProgressBar};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
+
+static CURRENT_MEDIA: OnceLock<Mutex<Option<ActiveMediaInfo>>> = OnceLock::new();
+
+fn get_current_media_mutex() -> &'static Mutex<Option<ActiveMediaInfo>> {
+    CURRENT_MEDIA.get_or_init(|| Mutex::new(None))
+}
+
+pub fn get_current_active_media() -> Option<ActiveMediaInfo> {
+    get_current_media_mutex().lock().unwrap().clone()
+}
+
+pub fn send_mpris_action(method: &str) {
+    let method = match method {
+        "play_pause" | "PlayPause" => "PlayPause",
+        "play" | "Play" => "Play",
+        "pause" | "Pause" => "Pause",
+        "next" | "Next" => "Next",
+        "previous" | "Previous" => "Previous",
+        _ => "PlayPause",
+    }
+    .to_string();
+
+    let target_bus = get_current_active_media().map(|m| m.bus_name);
+
+    std::thread::spawn(move || {
+        let _ = execute_mpris_action(target_bus, &method);
+        // Refresh active media immediately so UI catches up
+        std::thread::sleep(Duration::from_millis(150));
+        let refreshed = query_active_mpris_player();
+        *get_current_media_mutex().lock().unwrap() = refreshed;
+    });
+}
 
 #[zbus::proxy(
     interface = "org.mpris.MediaPlayer2.Player",
@@ -21,6 +53,8 @@ trait MediaPlayer2Player {
     fn metadata(&self) -> zbus::Result<std::collections::HashMap<String, zbus::zvariant::OwnedValue>>;
 
     fn play_pause(&self) -> zbus::Result<()>;
+    fn play(&self) -> zbus::Result<()>;
+    fn pause(&self) -> zbus::Result<()>;
     fn next(&self) -> zbus::Result<()>;
     fn previous(&self) -> zbus::Result<()>;
 }
@@ -39,6 +73,7 @@ pub struct ActiveMediaInfo {
 }
 
 pub struct MprisWidget {
+    #[allow(dead_code)]
     pub container: GtkBox,
     #[allow(dead_code)]
     pub is_active: Arc<AtomicBool>,
@@ -177,14 +212,17 @@ impl MprisWidget {
             });
         });
 
-        // Background worker thread: continuously polls D-Bus MPRIS every 600ms
+        // Background worker thread: continuously polls D-Bus MPRIS every 500ms
         let shared_worker = Arc::clone(&shared_media);
+        let is_active_worker = Arc::clone(&is_active);
         std::thread::spawn(move || loop {
             let info = query_active_mpris_player();
+            is_active_worker.store(info.is_some(), Ordering::Relaxed);
+            *get_current_media_mutex().lock().unwrap() = info.clone();
             if let Ok(mut lock) = shared_worker.lock() {
                 *lock = info;
             }
-            std::thread::sleep(Duration::from_millis(600));
+            std::thread::sleep(Duration::from_millis(500));
         });
 
         // GTK main thread timer: syncs UI from shared_media
@@ -234,8 +272,9 @@ impl MprisWidget {
                         total_time_update.set_text("--:--");
                     }
 
-                    *bus_update.borrow_mut() = Some(info.bus_name);
+                    *bus_update.borrow_mut() = Some(info.bus_name.clone());
                     is_active_flag.store(true, Ordering::Relaxed);
+                    *get_current_media_mutex().lock().unwrap() = Some(info);
                 } else {
                     title_update.set_text("No Media Playing");
                     artist_update.set_text("Waiting for playback");
@@ -249,6 +288,7 @@ impl MprisWidget {
                     total_time_update.set_text("--:--");
                     *bus_update.borrow_mut() = None;
                     is_active_flag.store(false, Ordering::Relaxed);
+                    *get_current_media_mutex().lock().unwrap() = None;
                 }
             }
 
@@ -271,28 +311,51 @@ fn execute_mpris_action(bus_name: Option<String>, method: &str) -> Result<(), Bo
     rt.block_on(async {
         let connection = zbus::Connection::session().await?;
 
-        let target = if let Some(name) = bus_name {
-            name
+        let target = if let Some(ref name) = bus_name {
+            if !name.trim().is_empty() {
+                name.clone()
+            } else {
+                find_best_mpris_target(&connection).await.unwrap_or_default()
+            }
         } else {
-            let dbus_proxy = zbus::fdo::DBusProxy::new(&connection).await?;
-            let names = dbus_proxy.list_names().await?;
-            names
-                .into_iter()
-                .find(|n| n.starts_with("org.mpris.MediaPlayer2."))
-                .map(|n| n.to_string())
-                .unwrap_or_default()
+            find_best_mpris_target(&connection).await.unwrap_or_default()
         };
 
+        eprintln!("open-notch: Sending action '{}' to target '{}'", method, target);
+
         if target.is_empty() {
+            eprintln!("open-notch: No MPRIS target player available");
             return Ok(());
         }
 
         if let Ok(builder) = MediaPlayer2PlayerProxy::builder(&connection).destination(target.as_str()) {
             if let Ok(player) = builder.build().await {
                 match method {
-                    "PlayPause" => { let _ = player.play_pause().await; }
-                    "Next" => { let _ = player.next().await; }
-                    "Previous" => { let _ = player.previous().await; }
+                    "PlayPause" => {
+                        let res = player.play_pause().await;
+                        eprintln!("open-notch: play_pause result on {}: {:?}", target, res);
+                        if res.is_err() {
+                            let status = player.playback_status().await.unwrap_or_default();
+                            eprintln!("open-notch: fallback status for {}: {}", target, status);
+                            if status.eq_ignore_ascii_case("Playing") {
+                                let _ = player.pause().await;
+                            } else {
+                                let _ = player.play().await;
+                            }
+                        }
+                    }
+                    "Play" => {
+                        let _ = player.play().await;
+                    }
+                    "Pause" => {
+                        let _ = player.pause().await;
+                    }
+                    "Next" => {
+                        let _ = player.next().await;
+                    }
+                    "Previous" => {
+                        let _ = player.previous().await;
+                    }
                     _ => {}
                 }
             }
@@ -300,6 +363,47 @@ fn execute_mpris_action(bus_name: Option<String>, method: &str) -> Result<(), Bo
 
         Ok(())
     })
+}
+
+/// Fully asynchronous search for the best MPRIS destination on D-Bus without creating nested runtimes
+async fn find_best_mpris_target(connection: &zbus::Connection) -> Option<String> {
+    let dbus_proxy = zbus::fdo::DBusProxy::new(connection).await.ok()?;
+    let names = dbus_proxy.list_names().await.ok()?;
+
+    let mpris_names: Vec<String> = names
+        .into_iter()
+        .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
+        .map(|n| n.to_string())
+        .collect();
+
+    if mpris_names.is_empty() {
+        return None;
+    }
+
+    let mut playing_target = None;
+    let mut paused_target = None;
+    let mut other_target = None;
+
+    for name in &mpris_names {
+        if let Ok(b) = MediaPlayer2PlayerProxy::builder(connection).destination(name.as_str()) {
+            if let Ok(proxy) = b.build().await {
+                let status = proxy.playback_status().await.unwrap_or_default();
+                if status.eq_ignore_ascii_case("Playing") {
+                    playing_target = Some(name.clone());
+                    break;
+                } else if paused_target.is_none() && status.eq_ignore_ascii_case("Paused") {
+                    paused_target = Some(name.clone());
+                } else if other_target.is_none() {
+                    other_target = Some(name.clone());
+                }
+            }
+        }
+    }
+
+    playing_target
+        .or(paused_target)
+        .or(other_target)
+        .or_else(|| mpris_names.into_iter().next())
 }
 
 /// Queries D-Bus session for active MPRIS players (Browsers, Spotify, VLC, MPV, etc.)
@@ -339,15 +443,22 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                             0.0
                         };
 
-                        let mut title = metadata
+                        let raw_title = metadata
                             .get("xesam:title")
                             .map(|v| extract_string_from_variant(v))
                             .unwrap_or_default();
 
-                        let mut artist = metadata
+                        let raw_artist = metadata
                             .get("xesam:artist")
                             .map(|v| extract_string_from_variant(v))
                             .unwrap_or_default();
+
+                        let is_playing = status.eq_ignore_ascii_case("Playing");
+
+                        // If not playing and has no title metadata, skip this idle player (e.g. background browser)
+                        if !is_playing && raw_title.trim().is_empty() {
+                            continue;
+                        }
 
                         // App badge name (Firefox, Brave, Spotify, Chrome)
                         let clean_bus_name = name.strip_prefix("org.mpris.MediaPlayer2.").unwrap_or(&name);
@@ -362,15 +473,17 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                             other => capitalize_first(other),
                         };
 
-                        if title.trim().is_empty() {
-                            title = format!("{} Playback", capitalize_first(app_name));
-                        }
+                        let title = if raw_title.trim().is_empty() {
+                            format!("{} Playback", capitalize_first(app_name))
+                        } else {
+                            raw_title
+                        };
 
-                        if artist.trim().is_empty() {
-                            artist = "Streaming Audio/Video".to_string();
-                        }
-
-                        let is_playing = status.eq_ignore_ascii_case("Playing");
+                        let artist = if raw_artist.trim().is_empty() {
+                            "Streaming Audio/Video".to_string()
+                        } else {
+                            raw_artist
+                        };
 
                         discovered.push(ActiveMediaInfo {
                             bus_name: name.to_string(),

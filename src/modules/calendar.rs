@@ -266,7 +266,7 @@ fn get_events_path() -> Option<PathBuf> {
     })
 }
 
-fn load_events_from_disk() -> Vec<CalendarEvent> {
+pub fn load_events_from_disk() -> Vec<CalendarEvent> {
     if let Some(path) = get_events_path() {
         if path.exists() {
             if let Ok(content) = fs::read_to_string(&path) {
