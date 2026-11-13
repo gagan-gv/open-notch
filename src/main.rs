@@ -1,5 +1,6 @@
 mod config;
 mod modules;
+mod privacy;
 mod window;
 
 use config::Config;

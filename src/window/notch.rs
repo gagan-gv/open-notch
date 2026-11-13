@@ -21,15 +21,53 @@ impl NotchWidget {
         root_box.add_css_class("notch-root");
 
         // Resting Pill (Top-Center)
-        let pill_box = GtkBox::new(Orientation::Horizontal, 8);
+        let pill_box = GtkBox::new(Orientation::Horizontal, 0);
         pill_box.set_halign(Align::Center);
         pill_box.set_valign(Align::Start);
         pill_box.set_size_request(config.general.collapsed_width, config.general.collapsed_height);
         pill_box.add_css_class("notch-pill");
 
-        let pill_indicator = Label::new(Some("●  OpenNotch"));
-        pill_indicator.add_css_class("pill-label");
-        pill_box.append(&pill_indicator);
+        // Minimal Dot Indicator (Changes color when Camera/Mic are active)
+        let pill_dot = Label::new(Some("●"));
+        pill_dot.set_halign(Align::Center);
+        pill_dot.set_valign(Align::Center);
+        pill_dot.add_css_class("pill-dot");
+        pill_box.append(&pill_dot);
+
+        // Privacy Status Monitor (Camera = Green, Mic = Purple, Camera > Mic priority)
+        let pill_box_privacy = pill_box.clone();
+        let pill_dot_privacy = pill_dot.clone();
+        let last_privacy_state = Rc::new(RefCell::new(crate::privacy::PrivacyState::Idle));
+
+        glib::timeout_add_local(Duration::from_millis(500), move || {
+            let current = crate::privacy::check_privacy_status();
+            let mut last = last_privacy_state.borrow_mut();
+
+            if *last != current {
+                *last = current;
+                match current {
+                    crate::privacy::PrivacyState::CameraActive => {
+                        pill_box_privacy.remove_css_class("mic-active");
+                        pill_box_privacy.add_css_class("camera-active");
+                        pill_dot_privacy.remove_css_class("mic-dot");
+                        pill_dot_privacy.add_css_class("camera-dot");
+                    }
+                    crate::privacy::PrivacyState::MicrophoneActive => {
+                        pill_box_privacy.remove_css_class("camera-active");
+                        pill_box_privacy.add_css_class("mic-active");
+                        pill_dot_privacy.remove_css_class("camera-dot");
+                        pill_dot_privacy.add_css_class("mic-dot");
+                    }
+                    crate::privacy::PrivacyState::Idle => {
+                        pill_box_privacy.remove_css_class("camera-active");
+                        pill_box_privacy.remove_css_class("mic-active");
+                        pill_dot_privacy.remove_css_class("camera-dot");
+                        pill_dot_privacy.remove_css_class("mic-dot");
+                    }
+                }
+            }
+            glib::ControlFlow::Continue
+        });
 
         // Expanded Shelf with Modules
         let modules = ModulesContainer::new(&config);
