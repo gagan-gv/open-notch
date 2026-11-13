@@ -48,12 +48,42 @@ Linux environments operate across multiple window managers and display protocols
 
 ---
 
-## Planned Architecture
+## Tech Stack & Architecture
 
-- **Core UI Engine**: Lightweight graphical interface supporting hardware-accelerated rendering and alpha transparency.
-- **D-Bus Integration (`org.mpris.MediaPlayer2`)**: Event-driven listener monitoring active media sessions and transport state.
-- **State Coordinator**: Manages active widget switching (switching to Calendar when playback terminates or pauses).
-- **Persistent Storage**: Local storage for user preferences and scratchpad notes in accordance with the XDG Base Directory specification (`$XDG_CONFIG_HOME/open-notch` and `$XDG_DATA_HOME/open-notch`).
+- **Language & Framework**: Rust with [GTK4](https://gtk-rs.org/)
+- **Window Layering**: [`gtk4-layer-shell`](https://crates.io/crates/gtk4-layer-shell) for Wayland overlays + EWMH dock fallback
+- **Media Control**: D-Bus MPRIS client via [`zbus`](https://crates.io/crates/zbus)
+- **Styling**: GTK4 CSS with glassmorphic transparency and easing animations
+- **Configuration**: TOML via `serde` (`~/.config/open-notch/config.toml`)
+
+---
+
+## Getting Started
+
+### System Prerequisites (Ubuntu / Debian / Zorin OS)
+
+```bash
+# Install GTK4 and Layer-Shell development headers
+sudo apt update && sudo apt install -y build-essential libgtk-4-dev libgtk4-layer-shell-dev pkg-config
+
+# Install Rust toolchain (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+```
+
+### Build & Run
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/open-notch.git
+cd open-notch
+
+# Run in debug mode
+cargo run
+
+# Build optimized release binary
+cargo build --release
+```
 
 ---
 

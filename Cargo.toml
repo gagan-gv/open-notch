@@ -1,0 +1,26 @@
+[package]
+name = "open-notch"
+version = "0.1.0"
+edition = "2021"
+authors = ["Gagan Chordia <chordiagagan@gmail.com>"]
+description = "A sleek, fluid, and dynamic notch overlay for Linux desktops"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+# GUI Toolkit & Layer Shell
+gtk4 = { version = "0.9", features = ["v4_12"] }
+gtk4-layer-shell = "0.4"
+glib = "0.20"
+
+# Async & D-Bus (MPRIS Media Controller)
+zbus = { version = "4.4", features = ["tokio"] }
+tokio = { version = "1.38", features = ["full"] }
+
+# Serialization & Configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+dirs = "5.0"
+
+# Time & Date (Calendar & Pomodoro)
+chrono = "0.4"

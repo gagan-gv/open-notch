@@ -1,0 +1,184 @@
+/* OpenNotch Theme */
+
+window {
+    background-color: transparent;
+}
+
+.notch-root {
+    background: transparent;
+}
+
+/* Resting Notch Pill */
+.notch-pill {
+    background: #0d0f12;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    padding: 4px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: all 200ms ease;
+}
+
+.notch-pill:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: #14171d;
+}
+
+.pill-label {
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Expanded Shelf Modules Container */
+.modules-container {
+    background: #101216;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    padding: 14px 18px;
+    margin: 6px 12px 12px 12px;
+}
+
+/* Tab Switcher inside Notch */
+.notch-switcher {
+    margin-bottom: 8px;
+}
+
+.notch-switcher button {
+    background: transparent;
+    color: #94a3b8;
+    border: none;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 150ms ease;
+}
+
+.notch-switcher button:checked {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.notch-switcher button:hover:not(:checked) {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f1f5f9;
+}
+
+/* Calendar Widget */
+.calendar-widget {
+    padding: 4px;
+}
+
+.calendar-header {
+    color: #f8fafc;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.mini-calendar {
+    background: transparent;
+    color: #cbd5e1;
+    border: none;
+}
+
+/* Media (MPRIS) Widget */
+.mpris-widget {
+    padding: 8px;
+}
+
+.mpris-title {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.mpris-artist {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.mpris-ctrl-btn {
+    background: rgba(255, 255, 255, 0.07);
+    color: #e2e8f0;
+    border-radius: 50%;
+    min-width: 34px;
+    min-height: 34px;
+    border: none;
+    font-size: 12px;
+}
+
+.mpris-play-btn {
+    background: #2563eb;
+    color: #ffffff;
+    border-radius: 50%;
+    min-width: 40px;
+    min-height: 40px;
+    border: none;
+    font-size: 14px;
+}
+
+.mpris-play-btn:hover {
+    background: #1d4ed8;
+}
+
+/* Pomodoro Widget */
+.pomodoro-widget {
+    padding: 6px;
+}
+
+.pomodoro-mode-label {
+    color: #38bdf8;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.pomodoro-timer-label {
+    color: #f8fafc;
+    font-weight: 800;
+    font-size: 28px;
+    font-family: monospace;
+}
+
+.pomodoro-btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 4px 14px;
+    font-weight: 600;
+    border: none;
+}
+
+.pomodoro-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border-radius: 8px;
+    padding: 4px 12px;
+    border: none;
+}
+
+/* Notes Widget */
+.notes-widget {
+    padding: 4px;
+}
+
+.notes-header {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.notes-editor {
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+}
