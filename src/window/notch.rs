@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::modules::ModulesContainer;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, Label, Orientation, Revealer,
-    RevealerTransitionType,
+    Align, ApplicationWindow, Box as GtkBox, EventControllerMotion, GestureClick, Label,
+    Orientation, Revealer, RevealerTransitionType,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -67,34 +67,50 @@ impl NotchWidget {
         let revealer_leave = revealer.clone();
         let window_leave = window.clone();
         let cfg_leave = config.clone();
+        let motion_ctrl_leave = motion_ctrl.clone();
 
         motion_ctrl.connect_leave(move |_| {
-            *is_hovered_leave.borrow_mut() = false;
             let is_hovered_check = Rc::clone(&is_hovered_leave);
             let revealer_check = revealer_leave.clone();
             let window_check = window_leave.clone();
             let cfg_check = cfg_leave.clone();
+            let ctrl_check = motion_ctrl_leave.clone();
 
             // Debounce before collapsing
             glib::timeout_add_local_once(
                 Duration::from_millis(cfg_leave.general.hover_debounce_ms),
                 move || {
-                    if !*is_hovered_check.borrow() {
-                        revealer_check.set_reveal_child(false);
-                        super::position::update_notch_input_region(
-                            &window_check,
-                            false,
-                            cfg_check.general.collapsed_width,
-                            cfg_check.general.collapsed_height,
-                            cfg_check.general.expanded_width,
-                            cfg_check.general.expanded_height,
-                        );
+                    // If pointer is still inside the notch (or clicking interactive children), do not close
+                    if ctrl_check.contains_pointer() {
+                        *is_hovered_check.borrow_mut() = true;
+                        return;
                     }
+
+                    *is_hovered_check.borrow_mut() = false;
+                    revealer_check.set_reveal_child(false);
+                    super::position::update_notch_input_region(
+                        &window_check,
+                        false,
+                        cfg_check.general.collapsed_width,
+                        cfg_check.general.collapsed_height,
+                        cfg_check.general.expanded_width,
+                        cfg_check.general.expanded_height,
+                    );
                 },
             );
         });
 
         root_box.add_controller(motion_ctrl);
+
+        // Click Gesture: clicking anywhere inside the notch keeps it open
+        let click_ctrl = GestureClick::new();
+        let is_hovered_click = Rc::clone(&is_hovered);
+        let revealer_click = revealer.clone();
+        click_ctrl.connect_pressed(move |_, _, _, _| {
+            *is_hovered_click.borrow_mut() = true;
+            revealer_click.set_reveal_child(true);
+        });
+        root_box.add_controller(click_ctrl);
 
         Self { root_box }
     }

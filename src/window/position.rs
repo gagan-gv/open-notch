@@ -127,10 +127,11 @@ pub fn update_notch_input_region(
 ) {
     if let Some(surface) = window.surface() {
         let rect = if expanded {
-            RectangleInt::new(0, 0, expanded_w, expanded_h)
+            // Generous bounding box so child widgets never clip click events
+            RectangleInt::new(0, 0, expanded_w, expanded_h.max(420))
         } else {
             let offset_x = (expanded_w - collapsed_w) / 2;
-            RectangleInt::new(offset_x, 0, collapsed_w, collapsed_h)
+            RectangleInt::new(offset_x, 0, collapsed_w, collapsed_h + 4)
         };
         let region = Region::create_rectangle(&rect);
         surface.set_input_region(&region);
