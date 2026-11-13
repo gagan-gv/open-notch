@@ -257,10 +257,10 @@ window {
 }
 
 .agenda-sync-btn {
-    background: rgba(255, 255, 255, 0.05);
-    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.07);
+    color: #93c5fd;
     border-radius: 8px;
-    padding: 2px 7px;
+    padding: 3px 8px;
     font-size: 10px;
     font-weight: 600;
     border: none;
@@ -268,82 +268,13 @@ window {
 }
 
 .agenda-sync-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: #60a5fa;
+    background: rgba(37, 99, 235, 0.3);
+    color: #ffffff;
 }
 
 .agenda-sys-badge {
     font-size: 10px;
     margin-right: 2px;
-}
-
-/* Inline Add Event Form */
-.agenda-add-card {
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 12px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.agenda-input-title {
-    background: rgba(255, 255, 255, 0.07);
-    color: #ffffff;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 5px 10px;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.agenda-input-title:focus {
-    border-color: #3b82f6;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.agenda-input-time {
-    background: rgba(255, 255, 255, 0.05);
-    color: #93c5fd;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 4px 8px;
-    font-size: 11px;
-    font-family: monospace;
-}
-
-.agenda-input-time:focus {
-    border-color: #3b82f6;
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.agenda-submit-btn {
-    background: #2563eb;
-    color: #ffffff;
-    border-radius: 8px;
-    padding: 4px 12px;
-    font-size: 11px;
-    font-weight: 700;
-    border: none;
-    transition: all 150ms ease;
-}
-
-.agenda-submit-btn:hover {
-    background: #1d4ed8;
-}
-
-.agenda-cancel-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #94a3b8;
-    border-radius: 8px;
-    padding: 4px 8px;
-    font-size: 11px;
-    border: none;
-    transition: all 150ms ease;
-}
-
-.agenda-cancel-btn:hover {
-    background: rgba(239, 68, 68, 0.25);
-    color: #ef4444;
 }
 
 /* --------------------------------------------------------------------------

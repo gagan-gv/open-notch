@@ -78,6 +78,7 @@ pub fn parse_ics_dtstart(val: &str) -> (String, String) {
 }
 
 /// Formats date and user-typed time string into RFC 5545 DTSTART and DTEND parameters
+#[allow(dead_code)]
 pub fn format_time_to_ics(date_str: &str, time_str: &str) -> (String, String) {
     let clean_date = date_str.replace('-', "");
     let time_lower = time_str.trim().to_lowercase();
@@ -227,6 +228,7 @@ pub fn load_system_calendar_events(target_date: &str) -> Vec<CalendarEvent> {
 }
 
 /// Syncs an event by adding it to the system's Evolution / GNOME Calendar store
+#[allow(dead_code)]
 pub fn add_event_to_system_calendar(title: &str, time: &str, date_str: &str) -> Option<String> {
     let home = dirs::home_dir()?;
     let system_ics_path = home.join(".local/share/evolution/calendar/system/calendar.ics");

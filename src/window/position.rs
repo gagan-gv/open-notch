@@ -65,22 +65,20 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
             .and_downcast::<gtk4::gdk::Monitor>();
         let screen_w = monitor.map(|m| m.geometry().width()).unwrap_or(1920);
 
-        let target_x = (screen_w - width) / 2;
+        let effective_w = width.max(window.width());
+        let target_x = (screen_w - effective_w) / 2;
         let target_y = 0;
 
         let atom_atom = XInternAtom(xdisplay, CString::new("ATOM").unwrap().as_ptr(), 0);
 
-        // 1. _NET_WM_WINDOW_TYPE = UTILITY (with DOCK fallback) so window can receive keyboard input
+        // 1. _NET_WM_WINDOW_TYPE = _NET_WM_WINDOW_TYPE_DOCK
         let net_wm_window_type = CString::new("_NET_WM_WINDOW_TYPE").unwrap();
         let atom_window_type = XInternAtom(xdisplay, net_wm_window_type.as_ptr(), 0);
-
-        let net_wm_type_utility = CString::new("_NET_WM_WINDOW_TYPE_UTILITY").unwrap();
-        let atom_type_utility = XInternAtom(xdisplay, net_wm_type_utility.as_ptr(), 0);
 
         let net_wm_type_dock = CString::new("_NET_WM_WINDOW_TYPE_DOCK").unwrap();
         let atom_type_dock = XInternAtom(xdisplay, net_wm_type_dock.as_ptr(), 0);
 
-        let type_atoms = [atom_type_utility, atom_type_dock];
+        let dock_atoms = [atom_type_dock];
         XChangeProperty(
             xdisplay,
             xid,
@@ -88,32 +86,18 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
             atom_atom,
             32,
             0, // PropModeReplace
-            type_atoms.as_ptr() as *const u8,
-            2,
+            dock_atoms.as_ptr() as *const u8,
+            1,
         );
 
-        // 2. _NET_WM_STATE = ABOVE + STICKY + SKIP_TASKBAR + SKIP_PAGER
+        // 2. _NET_WM_STATE = _NET_WM_STATE_ABOVE
         let net_wm_state = CString::new("_NET_WM_STATE").unwrap();
         let atom_state = XInternAtom(xdisplay, net_wm_state.as_ptr(), 0);
 
         let net_wm_state_above = CString::new("_NET_WM_STATE_ABOVE").unwrap();
         let atom_state_above = XInternAtom(xdisplay, net_wm_state_above.as_ptr(), 0);
 
-        let net_wm_state_sticky = CString::new("_NET_WM_STATE_STICKY").unwrap();
-        let atom_state_sticky = XInternAtom(xdisplay, net_wm_state_sticky.as_ptr(), 0);
-
-        let net_wm_state_skip_taskbar = CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap();
-        let atom_state_skip_taskbar = XInternAtom(xdisplay, net_wm_state_skip_taskbar.as_ptr(), 0);
-
-        let net_wm_state_skip_pager = CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap();
-        let atom_state_skip_pager = XInternAtom(xdisplay, net_wm_state_skip_pager.as_ptr(), 0);
-
-        let state_atoms = [
-            atom_state_above,
-            atom_state_sticky,
-            atom_state_skip_taskbar,
-            atom_state_skip_pager,
-        ];
+        let state_atoms = [atom_state_above];
         XChangeProperty(
             xdisplay,
             xid,
@@ -122,11 +106,11 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
             32,
             0, // PropModeReplace
             state_atoms.as_ptr() as *const u8,
-            4,
+            1,
         );
 
         // 3. Move and size window to top-center
-        XMoveResizeWindow(xdisplay, xid, target_x, target_y, width, height.max(450));
+        XMoveResizeWindow(xdisplay, xid, target_x, target_y, effective_w, height.max(450));
         XFlush(xdisplay);
     }
 }
@@ -143,11 +127,12 @@ pub fn update_notch_input_region(
     expanded_h: i32,
 ) {
     if let Some(surface) = window.surface() {
+        let win_w = expanded_w.max(window.width());
         let rect = if expanded {
             // Generous bounding box so child widgets never clip click or scroll events
-            RectangleInt::new(0, 0, expanded_w, expanded_h.max(480))
+            RectangleInt::new(0, 0, win_w, expanded_h.max(480))
         } else {
-            let offset_x = (expanded_w - collapsed_w) / 2;
+            let offset_x = (win_w - collapsed_w) / 2;
             RectangleInt::new(offset_x, 0, collapsed_w, collapsed_h + 4)
         };
         let region = Region::create_rectangle(&rect);
