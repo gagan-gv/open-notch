@@ -11,6 +11,11 @@ use pomodoro::PomodoroWidget;
 use crate::config::Config;
 use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, Orientation, Stack, StackSwitcher};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct ModulesContainer {
     pub container: GtkBox,
@@ -57,6 +62,26 @@ impl ModulesContainer {
 
         container.append(&switcher);
         container.append(&stack);
+
+        // Auto-switch between Media (when playing) and Calendar (when idle)
+        let stack_switch = stack.clone();
+        let is_active_check = Arc::clone(&mpris_widget.is_active);
+        let was_active = Rc::new(RefCell::new(false));
+
+        glib::timeout_add_local(Duration::from_millis(800), move || {
+            let active = is_active_check.load(Ordering::Relaxed);
+            let mut was = was_active.borrow_mut();
+
+            if *was != active {
+                *was = active;
+                if active {
+                    stack_switch.set_visible_child_name("media");
+                } else {
+                    stack_switch.set_visible_child_name("calendar");
+                }
+            }
+            glib::ControlFlow::Continue
+        });
 
         Self {
             container,
