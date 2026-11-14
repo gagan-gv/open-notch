@@ -3,11 +3,53 @@ use gtk4::prelude::*;
 use gtk4::{Align, Box as GtkBox, Button, Label, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Mutex, OnceLock};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PomodoroMode {
     Work,
     Break,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ActivePomodoroInfo {
+    pub is_running: bool,
+    pub mode: PomodoroMode,
+    pub remaining_seconds: u32,
+    pub total_seconds: u32,
+}
+
+static CURRENT_POMODORO: OnceLock<Mutex<ActivePomodoroInfo>> = OnceLock::new();
+
+pub fn get_current_pomodoro() -> ActivePomodoroInfo {
+    CURRENT_POMODORO
+        .get_or_init(|| {
+            Mutex::new(ActivePomodoroInfo {
+                is_running: false,
+                mode: PomodoroMode::Work,
+                remaining_seconds: 25 * 60,
+                total_seconds: 25 * 60,
+            })
+        })
+        .lock()
+        .unwrap()
+        .clone()
+}
+
+pub fn update_global_pomodoro(info: ActivePomodoroInfo) {
+    if let Ok(mut lock) = CURRENT_POMODORO
+        .get_or_init(|| {
+            Mutex::new(ActivePomodoroInfo {
+                is_running: false,
+                mode: PomodoroMode::Work,
+                remaining_seconds: 25 * 60,
+                total_seconds: 25 * 60,
+            })
+        })
+        .lock()
+    {
+        *lock = info;
+    }
 }
 
 struct PomodoroState {
@@ -16,6 +58,21 @@ struct PomodoroState {
     remaining_seconds: u32,
     work_seconds: u32,
     break_seconds: u32,
+}
+
+impl PomodoroState {
+    fn sync_global(&self) {
+        update_global_pomodoro(ActivePomodoroInfo {
+            is_running: self.is_running,
+            mode: self.mode,
+            remaining_seconds: self.remaining_seconds,
+            total_seconds: if self.mode == PomodoroMode::Work {
+                self.work_seconds
+            } else {
+                self.break_seconds
+            },
+        });
+    }
 }
 
 pub struct PomodoroWidget {
@@ -36,6 +93,13 @@ impl PomodoroWidget {
             work_seconds: work_min * 60,
             break_seconds: break_min * 60,
         }));
+
+        update_global_pomodoro(ActivePomodoroInfo {
+            is_running: false,
+            mode: PomodoroMode::Work,
+            remaining_seconds: work_min * 60,
+            total_seconds: work_min * 60,
+        });
 
         let mode_label = Label::new(Some("⚡ Focus Session"));
         mode_label.add_css_class("pomodoro-mode-label");
@@ -126,6 +190,7 @@ impl PomodoroWidget {
                     }
                     toggle_btn_minus.set_label("Start");
                     s.is_running = false;
+                    s.sync_global();
                     Config::update_pomodoro_durations(s.work_seconds / 60, s.break_seconds / 60);
 
                     // Update active button styles
@@ -165,6 +230,7 @@ impl PomodoroWidget {
                         }
 
                         timer_label_preset.set_text(&format_time(s.remaining_seconds));
+                        s.sync_global();
                         Config::update_pomodoro_durations(s.work_seconds / 60, s.break_seconds / 60);
                         update_preset_highlights(&presets_box_preset, &s);
                     });
@@ -197,6 +263,7 @@ impl PomodoroWidget {
                     }
                     toggle_btn_plus.set_label("Start");
                     s.is_running = false;
+                    s.sync_global();
                     Config::update_pomodoro_durations(s.work_seconds / 60, s.break_seconds / 60);
                     update_preset_highlights(&presets_box_plus, &s);
                 });
@@ -244,6 +311,7 @@ impl PomodoroWidget {
                         timer_label_tick.set_text(&format_time(s.remaining_seconds));
                         new_mode = s.mode;
                     }
+                    s.sync_global();
                 }
             } // RefCell borrow_mut is explicitly dropped here before calling UI refresh
 
@@ -275,6 +343,7 @@ impl PomodoroWidget {
             } else {
                 toggle_btn_action.set_label("Start");
             }
+            s.sync_global();
         });
 
         // Reset action
@@ -291,6 +360,7 @@ impl PomodoroWidget {
             };
             toggle_btn_reset.set_label("Start");
             timer_label_reset.set_text(&format_time(s.remaining_seconds));
+            s.sync_global();
         });
 
         // Switch mode action (Focus <-> Break)
@@ -318,6 +388,7 @@ impl PomodoroWidget {
                     switch_btn_label.set_label("Switch to Break");
                 }
                 timer_label_switch.set_text(&format_time(s.remaining_seconds));
+                s.sync_global();
             } // RefCell borrow_mut is explicitly dropped here before calling UI refresh
             refresh_presets_switch();
         });

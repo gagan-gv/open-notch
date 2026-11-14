@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::modules::ModulesContainer;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, ApplicationWindow, Box as GtkBox, DrawingArea, EventControllerMotion, EventControllerScroll,
+    Align, ApplicationWindow, Box as GtkBox, CenterBox, DrawingArea, EventControllerMotion, EventControllerScroll,
     EventControllerScrollFlags, Label, Orientation, PropagationPhase, Revealer,
     RevealerTransitionType,
 };
@@ -21,24 +21,28 @@ impl NotchWidget {
         root_box.set_valign(Align::Start);
         root_box.add_css_class("notch-root");
 
-        // Resting Pill (Top-Center)
-        let pill_box = GtkBox::new(Orientation::Horizontal, 0);
+        // Resting Pill (Top-Center) with CenterBox to ensure center dot is always dead-center
+        let pill_box = CenterBox::new();
         pill_box.set_halign(Align::Center);
         pill_box.set_valign(Align::Start);
         pill_box.set_size_request(config.general.collapsed_width, config.general.collapsed_height);
         pill_box.add_css_class("notch-pill");
 
-        // Pill layout: [ Left Media Icon ] [ Center Dot ] [ Right Equalizer Waveform ]
-        let left_media_box = GtkBox::new(Orientation::Horizontal, 0);
-        left_media_box.set_halign(Align::Start);
-        left_media_box.set_valign(Align::Center);
-        left_media_box.set_hexpand(true);
-        left_media_box.set_visible(false);
+        // Pill layout: [ Left Item: Icon + Text ] [ Center: Camera Dot ] [ Right Item: Text + Equalizer ]
+        let left_pill_box = GtkBox::new(Orientation::Horizontal, 4);
+        left_pill_box.set_halign(Align::Start);
+        left_pill_box.set_valign(Align::Center);
+        left_pill_box.set_visible(false);
 
-        let left_media_icon = Label::new(Some("🎵"));
-        left_media_icon.add_css_class("pill-media-icon");
-        left_media_icon.set_margin_start(14);
-        left_media_box.append(&left_media_icon);
+        let left_pill_icon = Label::new(Some("🎵"));
+        left_pill_icon.add_css_class("pill-icon");
+
+        let left_pill_text = Label::new(Some(""));
+        left_pill_text.add_css_class("pill-pomo-text");
+        left_pill_text.set_visible(false);
+
+        left_pill_box.append(&left_pill_icon);
+        left_pill_box.append(&left_pill_text);
 
         let center_box = GtkBox::new(Orientation::Horizontal, 0);
         center_box.set_halign(Align::Center);
@@ -51,11 +55,14 @@ impl NotchWidget {
         pill_dot.add_css_class("pill-dot");
         center_box.append(&pill_dot);
 
-        let right_media_box = GtkBox::new(Orientation::Horizontal, 0);
-        right_media_box.set_halign(Align::End);
-        right_media_box.set_valign(Align::Center);
-        right_media_box.set_hexpand(true);
-        right_media_box.set_visible(false);
+        let right_pill_box = GtkBox::new(Orientation::Horizontal, 4);
+        right_pill_box.set_halign(Align::End);
+        right_pill_box.set_valign(Align::Center);
+        right_pill_box.set_visible(false);
+
+        let right_pill_text = Label::new(Some(""));
+        right_pill_text.add_css_class("pill-pomo-text");
+        right_pill_text.set_visible(false);
 
         // Animated Audio Waveform Equalizer (DrawingArea)
         let eq_area = DrawingArea::new();
@@ -63,13 +70,15 @@ impl NotchWidget {
         eq_area.set_content_height(14);
         eq_area.set_valign(Align::Center);
         eq_area.set_halign(Align::Center);
-        eq_area.set_margin_end(14);
         eq_area.add_css_class("pill-eq-area");
-        right_media_box.append(&eq_area);
+        eq_area.set_visible(false);
 
-        pill_box.append(&left_media_box);
-        pill_box.append(&center_box);
-        pill_box.append(&right_media_box);
+        right_pill_box.append(&right_pill_text);
+        right_pill_box.append(&eq_area);
+
+        pill_box.set_start_widget(Some(&left_pill_box));
+        pill_box.set_center_widget(Some(&center_box));
+        pill_box.set_end_widget(Some(&right_pill_box));
 
         // Waveform Equalizer Drawing Function
         let animation_phase = Rc::new(RefCell::new(0.0f64));
@@ -130,23 +139,99 @@ impl NotchWidget {
 
         let is_hovered = Rc::new(RefCell::new(false));
 
-        // Media playback state monitor on resting pill (every 250ms)
-        let left_media_box_monitor = left_media_box.clone();
-        let right_media_box_monitor = right_media_box.clone();
-        let left_icon_monitor = left_media_icon.clone();
+        // Media & Pomodoro playback state monitor on resting pill (every 250ms)
+        let left_pill_box_monitor = left_pill_box.clone();
+        let right_pill_box_monitor = right_pill_box.clone();
+        let left_icon_monitor = left_pill_icon.clone();
+        let left_text_monitor = left_pill_text.clone();
+        let right_text_monitor = right_pill_text.clone();
+        let eq_area_monitor = eq_area.clone();
         let is_hovered_media = Rc::clone(&is_hovered);
         let is_animating_media = Rc::clone(&is_animating);
         let spotify_media = Rc::clone(&player_is_spotify);
         let pill_box_media = pill_box.clone();
 
         glib::timeout_add_local(Duration::from_millis(250), move || {
-            let media = crate::modules::mpris::get_current_active_media();
-            let is_playing = media.as_ref().map(|m| m.is_playing).unwrap_or(false);
             let hovered = *is_hovered_media.borrow();
 
-            let should_show = is_playing && !hovered;
+            // When expanded (hovered), keep resting pill clean while dashboard is visible
+            if hovered {
+                left_pill_box_monitor.set_visible(false);
+                right_pill_box_monitor.set_visible(false);
+                pill_box_media.remove_css_class("pomo-active");
+                pill_box_media.remove_css_class("pomo-break-active");
+                pill_box_media.remove_css_class("media-active");
+                *is_animating_media.borrow_mut() = false;
+                return glib::ControlFlow::Continue;
+            }
 
-            if should_show {
+            let pomo = crate::modules::pomodoro::get_current_pomodoro();
+            let media = crate::modules::mpris::get_current_active_media();
+            let is_playing = media.as_ref().map(|m| m.is_playing).unwrap_or(false);
+
+            if pomo.is_running && is_playing {
+                // Both Pomodoro & Music are active
+                let icon_str = match pomo.mode {
+                    crate::modules::pomodoro::PomodoroMode::Work => "🍅",
+                    crate::modules::pomodoro::PomodoroMode::Break => "☕",
+                };
+                left_icon_monitor.set_text(icon_str);
+
+                let min = pomo.remaining_seconds / 60;
+                let sec = pomo.remaining_seconds % 60;
+                left_text_monitor.set_text(&format!("{:02}:{:02}", min, sec));
+                left_text_monitor.set_visible(true);
+                left_pill_box_monitor.set_visible(true);
+
+                if let Some(ref info) = media {
+                    let is_spotify = info.player_display_name.to_lowercase().contains("spotify");
+                    *spotify_media.borrow_mut() = is_spotify;
+                }
+
+                right_text_monitor.set_visible(false);
+                eq_area_monitor.set_visible(true);
+                right_pill_box_monitor.set_visible(true);
+
+                pill_box_media.remove_css_class("media-active");
+                if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
+                    pill_box_media.remove_css_class("pomo-break-active");
+                    pill_box_media.add_css_class("pomo-active");
+                } else {
+                    pill_box_media.remove_css_class("pomo-active");
+                    pill_box_media.add_css_class("pomo-break-active");
+                }
+                *is_animating_media.borrow_mut() = true;
+
+            } else if pomo.is_running {
+                // Only Pomodoro is running
+                let (icon_str, title_str) = match pomo.mode {
+                    crate::modules::pomodoro::PomodoroMode::Work => ("🍅", "Focus"),
+                    crate::modules::pomodoro::PomodoroMode::Break => ("☕", "Break"),
+                };
+                left_icon_monitor.set_text(icon_str);
+                left_text_monitor.set_text(title_str);
+                left_text_monitor.set_visible(true);
+                left_pill_box_monitor.set_visible(true);
+
+                let min = pomo.remaining_seconds / 60;
+                let sec = pomo.remaining_seconds % 60;
+                right_text_monitor.set_text(&format!("{:02}:{:02}", min, sec));
+                right_text_monitor.set_visible(true);
+                eq_area_monitor.set_visible(false);
+                right_pill_box_monitor.set_visible(true);
+
+                pill_box_media.remove_css_class("media-active");
+                if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
+                    pill_box_media.remove_css_class("pomo-break-active");
+                    pill_box_media.add_css_class("pomo-active");
+                } else {
+                    pill_box_media.remove_css_class("pomo-active");
+                    pill_box_media.add_css_class("pomo-break-active");
+                }
+                *is_animating_media.borrow_mut() = false;
+
+            } else if is_playing {
+                // Only Music is playing
                 if let Some(ref info) = media {
                     let is_spotify = info.player_display_name.to_lowercase().contains("spotify");
                     *spotify_media.borrow_mut() = is_spotify;
@@ -156,13 +241,28 @@ impl NotchWidget {
                         left_icon_monitor.set_text("🎵");
                     }
                 }
-                left_media_box_monitor.set_visible(true);
-                right_media_box_monitor.set_visible(true);
+                left_text_monitor.set_visible(false);
+                left_pill_box_monitor.set_visible(true);
+
+                right_text_monitor.set_visible(false);
+                eq_area_monitor.set_visible(true);
+                right_pill_box_monitor.set_visible(true);
+
+                pill_box_media.remove_css_class("pomo-active");
+                pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.add_css_class("media-active");
                 *is_animating_media.borrow_mut() = true;
+
             } else {
-                left_media_box_monitor.set_visible(false);
-                right_media_box_monitor.set_visible(false);
+                // Idle
+                left_pill_box_monitor.set_visible(false);
+                left_text_monitor.set_visible(false);
+                right_pill_box_monitor.set_visible(false);
+                right_text_monitor.set_visible(false);
+                eq_area_monitor.set_visible(false);
+
+                pill_box_media.remove_css_class("pomo-active");
+                pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
                 *is_animating_media.borrow_mut() = false;
             }
@@ -225,14 +325,18 @@ impl NotchWidget {
         let is_hovered_enter = Rc::clone(&is_hovered);
         let window_enter = window.clone();
         let cfg_enter = config.clone();
-        let left_media_enter = left_media_box.clone();
-        let right_media_enter = right_media_box.clone();
+        let left_pill_enter = left_pill_box.clone();
+        let right_pill_enter = right_pill_box.clone();
+        let pill_box_enter = pill_box.clone();
         let is_animating_enter = Rc::clone(&is_animating);
 
         motion_ctrl.connect_enter(move |_, _x, _y| {
             *is_hovered_enter.borrow_mut() = true;
-            left_media_enter.set_visible(false);
-            right_media_enter.set_visible(false);
+            left_pill_enter.set_visible(false);
+            right_pill_enter.set_visible(false);
+            pill_box_enter.remove_css_class("pomo-active");
+            pill_box_enter.remove_css_class("pomo-break-active");
+            pill_box_enter.remove_css_class("media-active");
             *is_animating_enter.borrow_mut() = false;
             revealer_enter.set_reveal_child(true);
             super::position::update_notch_input_region(
@@ -275,9 +379,6 @@ impl NotchWidget {
         let window_leave = window.clone();
         let cfg_leave = config.clone();
         let motion_ctrl_leave = motion_ctrl.clone();
-        let left_media_leave = left_media_box.clone();
-        let right_media_leave = right_media_box.clone();
-        let is_animating_leave = Rc::clone(&is_animating);
 
         motion_ctrl.connect_leave(move |_| {
             let is_hovered_check = Rc::clone(&is_hovered_leave);
@@ -285,9 +386,6 @@ impl NotchWidget {
             let window_check = window_leave.clone();
             let cfg_check = cfg_leave.clone();
             let ctrl_check = motion_ctrl_leave.clone();
-            let left_media_check = left_media_leave.clone();
-            let right_media_check = right_media_leave.clone();
-            let is_animating_check = Rc::clone(&is_animating_leave);
 
             // Debounce before collapsing
             glib::timeout_add_local_once(
@@ -311,14 +409,6 @@ impl NotchWidget {
                     *is_hovered_check.borrow_mut() = false;
                     revealer_check.set_reveal_child(false);
 
-                    // Resume pill media animation if media is playing
-                    let media = crate::modules::mpris::get_current_active_media();
-                    if media.as_ref().map(|m| m.is_playing).unwrap_or(false) {
-                        left_media_check.set_visible(true);
-                        right_media_check.set_visible(true);
-                        *is_animating_check.borrow_mut() = true;
-                    }
-
                     super::position::update_notch_input_region(
                         &window_check,
                         false,
@@ -337,21 +427,11 @@ impl NotchWidget {
         let window_active = window.clone();
         let cfg_active = config.clone();
         let ctrl_active = motion_ctrl.clone();
-        let left_media_active = left_media_box.clone();
-        let right_media_active = right_media_box.clone();
-        let is_animating_active = Rc::clone(&is_animating);
 
         window.connect_is_active_notify(move |win| {
             if !win.is_active() && !ctrl_active.contains_pointer() {
                 *is_hovered_active.borrow_mut() = false;
                 revealer_active.set_reveal_child(false);
-
-                let media = crate::modules::mpris::get_current_active_media();
-                if media.as_ref().map(|m| m.is_playing).unwrap_or(false) {
-                    left_media_active.set_visible(true);
-                    right_media_active.set_visible(true);
-                    *is_animating_active.borrow_mut() = true;
-                }
 
                 super::position::update_notch_input_region(
                     &window_active,
@@ -370,21 +450,11 @@ impl NotchWidget {
         let window_esc = window.clone();
         let cfg_esc = config.clone();
         let is_hovered_esc = Rc::clone(&is_hovered);
-        let left_media_esc = left_media_box.clone();
-        let right_media_esc = right_media_box.clone();
-        let is_animating_esc = Rc::clone(&is_animating);
 
         key_ctrl.connect_key_pressed(move |_, key, _, _| {
             if key == gtk4::gdk::Key::Escape {
                 *is_hovered_esc.borrow_mut() = false;
                 revealer_esc.set_reveal_child(false);
-
-                let media = crate::modules::mpris::get_current_active_media();
-                if media.as_ref().map(|m| m.is_playing).unwrap_or(false) {
-                    left_media_esc.set_visible(true);
-                    right_media_esc.set_visible(true);
-                    *is_animating_esc.borrow_mut() = true;
-                }
 
                 super::position::update_notch_input_region(
                     &window_esc,
