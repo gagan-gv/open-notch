@@ -97,7 +97,8 @@ impl MprisWidget {
         album_art_box.set_valign(Align::Center);
         album_art_box.add_css_class("mpris-album-art");
 
-        let vinyl_icon = Label::new(Some("🎵"));
+        let vinyl_icon = gtk4::Image::from_icon_name("audio-x-generic-symbolic");
+        vinyl_icon.set_pixel_size(24);
         vinyl_icon.set_valign(Align::Center);
         vinyl_icon.set_halign(Align::Center);
         vinyl_icon.add_css_class("mpris-vinyl-icon");
@@ -166,13 +167,13 @@ impl MprisWidget {
         controls.set_valign(Align::Center);
         controls.add_css_class("mpris-controls-row");
 
-        let prev_btn = Button::with_label("⏮");
+        let prev_btn = Button::from_icon_name("media-skip-backward-symbolic");
         prev_btn.add_css_class("mpris-ctrl-btn");
 
-        let play_btn = Button::with_label("▶");
+        let play_btn = Button::from_icon_name("media-playback-start-symbolic");
         play_btn.add_css_class("mpris-play-btn");
 
-        let next_btn = Button::with_label("⏭");
+        let next_btn = Button::from_icon_name("media-skip-forward-symbolic");
         next_btn.add_css_class("mpris-ctrl-btn");
 
         controls.append(&prev_btn);
@@ -251,13 +252,13 @@ impl MprisWidget {
 
                     if info.is_playing {
                         artist_update.set_text(&info.artist);
-                        play_btn_update.set_label("⏸");
+                        play_btn_update.set_icon_name("media-playback-pause-symbolic");
                         if !album_box_update.has_css_class("playing") {
                             album_box_update.add_css_class("playing");
                         }
                     } else {
                         artist_update.set_text(&format!("{} (Paused)", info.artist));
-                        play_btn_update.set_label("▶");
+                        play_btn_update.set_icon_name("media-playback-start-symbolic");
                         if album_box_update.has_css_class("playing") {
                             album_box_update.remove_css_class("playing");
                         }
@@ -279,7 +280,7 @@ impl MprisWidget {
                     title_update.set_text("No Media Playing");
                     artist_update.set_text("Waiting for playback");
                     badge_update.set_text("IDLE");
-                    play_btn_update.set_label("▶");
+                    play_btn_update.set_icon_name("media-playback-start-symbolic");
                     if album_box_update.has_css_class("playing") {
                         album_box_update.remove_css_class("playing");
                     }
@@ -464,12 +465,12 @@ fn query_active_mpris_player() -> Option<ActiveMediaInfo> {
                         let clean_bus_name = name.strip_prefix("org.mpris.MediaPlayer2.").unwrap_or(&name);
                         let app_name = clean_bus_name.split('.').next().unwrap_or(clean_bus_name);
                         let player_display_name = match app_name.to_lowercase().as_str() {
-                            "firefox" => "🦊 Firefox".to_string(),
-                            "chromium" => "🌐 Chromium".to_string(),
-                            "chrome" | "google-chrome" => "🌐 Chrome".to_string(),
-                            "brave" => "🦁 Brave".to_string(),
-                            "spotify" => "🟢 Spotify".to_string(),
-                            "vlc" => "🍊 VLC".to_string(),
+                            "firefox" => "Firefox".to_string(),
+                            "chromium" => "Chromium".to_string(),
+                            "chrome" | "google-chrome" => "Chrome".to_string(),
+                            "brave" => "Brave".to_string(),
+                            "spotify" => "Spotify".to_string(),
+                            "vlc" => "VLC".to_string(),
                             other => capitalize_first(other),
                         };
 

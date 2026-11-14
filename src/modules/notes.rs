@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, GestureClick, Label, Orientation, PolicyType, PropagationPhase,
+    Align, Box as GtkBox, GestureClick, Image, Label, Orientation, PolicyType, PropagationPhase,
     ScrolledWindow, TextView,
 };
 use std::fs;
@@ -20,16 +20,23 @@ impl NotesWidget {
         let header_row = GtkBox::new(Orientation::Horizontal, 8);
         header_row.set_valign(Align::Center);
 
-        let header = Label::new(Some("📝 Scratchpad"));
-        header.add_css_class("notes-header");
-        header.set_halign(Align::Start);
-        header.set_hexpand(true);
+        let title_box = GtkBox::new(Orientation::Horizontal, 6);
+        title_box.set_halign(Align::Start);
+        title_box.set_hexpand(true);
 
-        let status_badge = Label::new(Some("✓ Saved locally"));
+        let note_icon = Image::from_icon_name("document-edit-symbolic");
+        note_icon.set_pixel_size(14);
+        let header = Label::new(Some("Scratchpad"));
+        header.add_css_class("notes-header");
+
+        title_box.append(&note_icon);
+        title_box.append(&header);
+
+        let status_badge = Label::new(Some("Saved locally"));
         status_badge.add_css_class("notes-status-badge");
         status_badge.set_halign(Align::End);
 
-        header_row.append(&header);
+        header_row.append(&title_box);
         header_row.append(&status_badge);
 
         let text_view = TextView::new();
@@ -89,7 +96,7 @@ impl NotesWidget {
                 let end = buf.end_iter();
                 let text = buf.text(&start, &end, false);
                 let _ = fs::write(&path, text.as_str());
-                status_label.set_text("✓ Auto-saved");
+                status_label.set_text("Auto-saved");
             });
         }
 

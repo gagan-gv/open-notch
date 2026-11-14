@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, Button, Entry, GestureClick, Label, Orientation, ScrolledWindow,
+    Align, Box as GtkBox, Button, Entry, GestureClick, Image, Label, Orientation, ScrolledWindow,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -204,13 +204,19 @@ impl ClipboardWidget {
         container.set_hexpand(true);
         container.add_css_class("clipboard-widget");
 
-        // Header Row [ 📋 Clipboard History ] [ Badge ] [ Clear ]
+        // Header Row [ Icon + Title ] [ Badge ] [ Clear ]
         let header = GtkBox::new(Orientation::Horizontal, 8);
         header.set_valign(Align::Center);
         header.add_css_class("clipboard-header");
 
-        let title_label = Label::new(Some("📋 Clipboard History"));
+        let title_box = GtkBox::new(Orientation::Horizontal, 6);
+        title_box.set_valign(Align::Center);
+        let title_icon = Image::from_icon_name("edit-copy-symbolic");
+        title_icon.set_pixel_size(14);
+        let title_label = Label::new(Some("Clipboard History"));
         title_label.add_css_class("clipboard-title");
+        title_box.append(&title_icon);
+        title_box.append(&title_label);
 
         let badge = Label::new(Some("0 items"));
         badge.add_css_class("clipboard-badge");
@@ -224,13 +230,13 @@ impl ClipboardWidget {
         clear_btn.set_tooltip_text(Some("Clear all unpinned clips"));
 
         header_actions.append(&clear_btn);
-        header.append(&title_label);
+        header.append(&title_box);
         header.append(&badge);
         header.append(&header_actions);
 
         // Search Input Bar
         let search_entry = Entry::new();
-        search_entry.set_placeholder_text(Some("🔍 Search clipboard history..."));
+        search_entry.set_placeholder_text(Some("Search clipboard history..."));
         search_entry.add_css_class("clipboard-search-entry");
 
         // List Container (Scrolled)
@@ -283,7 +289,7 @@ impl ClipboardWidget {
                 clear_ref.set_sensitive(false);
             } else {
                 if pinned_count > 0 {
-                    badge_ref.set_text(&format!("{} items • {} 📌", total, pinned_count));
+                    badge_ref.set_text(&format!("{} items • {} pinned", total, pinned_count));
                 } else {
                     badge_ref.set_text(&format!("{} item{}", total, if total > 1 { "s" } else { "" }));
                 }
@@ -296,13 +302,14 @@ impl ClipboardWidget {
             }
 
             if filtered_items.is_empty() {
-                let empty_box = GtkBox::new(Orientation::Vertical, 4);
+                let empty_box = GtkBox::new(Orientation::Vertical, 6);
                 empty_box.set_valign(Align::Center);
                 empty_box.set_halign(Align::Center);
                 empty_box.set_margin_top(20);
                 empty_box.set_margin_bottom(20);
 
-                let empty_icon = Label::new(Some("📋"));
+                let empty_icon = Image::from_icon_name("edit-copy-symbolic");
+                empty_icon.set_pixel_size(28);
                 empty_icon.add_css_class("clip-empty-icon");
 
                 let empty_txt = Label::new(Some(if filter_query.is_empty() {
@@ -327,15 +334,16 @@ impl ClipboardWidget {
                     }
 
                     // 1. Icon Tag (URL / Code / Text)
-                    let icon_str = if item.is_url {
-                        "🔗"
+                    let icon_name = if item.is_url {
+                        "insert-link-symbolic"
                     } else if item.is_code {
-                        "💻"
+                        "utilities-terminal-symbolic"
                     } else {
-                        "📄"
+                        "x-office-document-symbolic"
                     };
-                    let icon_lbl = Label::new(Some(icon_str));
-                    icon_lbl.add_css_class("clip-type-icon");
+                    let icon_img = Image::from_icon_name(icon_name);
+                    icon_img.set_pixel_size(14);
+                    icon_img.add_css_class("clip-type-icon");
 
                     // 2. Text Snippet & Meta
                     let text_box = GtkBox::new(Orientation::Vertical, 1);
@@ -376,12 +384,15 @@ impl ClipboardWidget {
                     text_box.append(&snippet_lbl);
                     text_box.append(&meta_lbl);
 
-                    // 3. Action Buttons [ 📋 Copy ] [ 📌 Pin ] [ ✕ Del ]
+                    // 3. Action Buttons [ Copy ] [ Pin ] [ Del ]
                     let actions = GtkBox::new(Orientation::Horizontal, 2);
                     actions.set_halign(Align::End);
                     actions.set_valign(Align::Center);
 
-                    let copy_btn = Button::with_label("📋");
+                    let copy_btn = Button::new();
+                    let copy_ico = Image::from_icon_name("edit-copy-symbolic");
+                    copy_ico.set_pixel_size(12);
+                    copy_btn.set_child(Some(&copy_ico));
                     copy_btn.add_css_class("clip-btn");
                     copy_btn.set_tooltip_text(Some("Copy to clipboard"));
                     let text_for_btn = item.text.clone();
@@ -394,7 +405,10 @@ impl ClipboardWidget {
                         }
                     });
 
-                    let pin_btn = Button::with_label(if item.is_pinned { "📌" } else { "📍" });
+                    let pin_btn = Button::new();
+                    let pin_ico = Image::from_icon_name("view-pin-symbolic");
+                    pin_ico.set_pixel_size(12);
+                    pin_btn.set_child(Some(&pin_ico));
                     pin_btn.add_css_class("clip-btn");
                     if item.is_pinned {
                         pin_btn.add_css_class("pin-active");
@@ -411,7 +425,10 @@ impl ClipboardWidget {
                         }
                     });
 
-                    let del_btn = Button::with_label("✕");
+                    let del_btn = Button::new();
+                    let del_ico = Image::from_icon_name("window-close-symbolic");
+                    del_ico.set_pixel_size(12);
+                    del_btn.set_child(Some(&del_ico));
                     del_btn.add_css_class("clip-btn");
                     del_btn.add_css_class("clip-btn-del");
                     del_btn.set_tooltip_text(Some("Remove snippet"));
@@ -441,7 +458,7 @@ impl ClipboardWidget {
                     });
                     row.add_controller(row_click);
 
-                    row.append(&icon_lbl);
+                    row.append(&icon_img);
                     row.append(&text_box);
                     row.append(&actions);
 

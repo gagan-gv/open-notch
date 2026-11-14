@@ -17,7 +17,7 @@ use pomodoro::PomodoroWidget;
 
 use crate::config::Config;
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Button, Label, Orientation, Stack};
+use gtk4::{Align, Box as GtkBox, Button, Image, Label, Orientation, Stack};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -54,29 +54,51 @@ impl ModulesContainer {
         let top_bar = GtkBox::new(Orientation::Horizontal, 8);
         top_bar.add_css_class("notch-top-bar");
 
-        // Top Left: Quick View Switchers [ 🏠 Dashboard ] [ 📥 Drops ] [ 📋 Clipboard ] [ ⏳ Focus ] [ 📝 Notes ]
+        // Top Left: Quick View Switchers [ Home ] [ Drops ] [ Clipboard ] [ Focus ] [ Notes ]
         let nav_box = GtkBox::new(Orientation::Horizontal, 6);
         nav_box.set_halign(Align::Start);
         nav_box.set_valign(Align::Center);
 
-        let home_btn = Button::with_label("🏠");
+        let home_icon = Image::from_icon_name("go-home-symbolic");
+        home_icon.set_pixel_size(15);
+        let home_btn = Button::new();
+        home_btn.set_child(Some(&home_icon));
         home_btn.add_css_class("top-nav-btn");
         home_btn.add_css_class("top-nav-active");
         home_btn.set_tooltip_text(Some("Dashboard (Media & Schedule)"));
 
-        let drops_btn = Button::with_label("📥");
+        let drops_box = GtkBox::new(Orientation::Horizontal, 4);
+        drops_box.set_valign(Align::Center);
+        let drops_icon = Image::from_icon_name("folder-download-symbolic");
+        drops_icon.set_pixel_size(15);
+        let drops_badge = Label::new(None);
+        drops_badge.add_css_class("top-nav-badge");
+        drops_badge.set_visible(false);
+        drops_box.append(&drops_icon);
+        drops_box.append(&drops_badge);
+        let drops_btn = Button::new();
+        drops_btn.set_child(Some(&drops_box));
         drops_btn.add_css_class("top-nav-btn");
         drops_btn.set_tooltip_text(Some("Drop Shelf (File Transit Tray)"));
 
-        let clip_btn = Button::with_label("📋");
+        let clip_icon = Image::from_icon_name("edit-copy-symbolic");
+        clip_icon.set_pixel_size(15);
+        let clip_btn = Button::new();
+        clip_btn.set_child(Some(&clip_icon));
         clip_btn.add_css_class("top-nav-btn");
         clip_btn.set_tooltip_text(Some("Clipboard History"));
 
-        let focus_btn = Button::with_label("⏳");
+        let focus_icon = Image::from_icon_name("alarm-symbolic");
+        focus_icon.set_pixel_size(15);
+        let focus_btn = Button::new();
+        focus_btn.set_child(Some(&focus_icon));
         focus_btn.add_css_class("top-nav-btn");
         focus_btn.set_tooltip_text(Some("Focus Timer"));
 
-        let notes_btn = Button::with_label("📝");
+        let notes_icon = Image::from_icon_name("document-edit-symbolic");
+        notes_icon.set_pixel_size(15);
+        let notes_btn = Button::new();
+        notes_btn.set_child(Some(&notes_icon));
         notes_btn.add_css_class("top-nav-btn");
         notes_btn.set_tooltip_text(Some("Quick Notes"));
 
@@ -86,46 +108,61 @@ impl ModulesContainer {
         nav_box.append(&focus_btn);
         nav_box.append(&notes_btn);
 
-        // Top Right: Live Battery Indicator (e.g. 80% 🔋)
+        // Top Right: Live Battery Indicator with Symbolic Battery Icon
         let right_box = GtkBox::new(Orientation::Horizontal, 8);
         right_box.set_halign(Align::End);
         right_box.set_valign(Align::Center);
         right_box.set_hexpand(true);
 
-        let battery_label = Label::new(Some("100% 🔋"));
-        battery_label.add_css_class("top-battery-badge");
+        let battery_box = GtkBox::new(Orientation::Horizontal, 4);
+        battery_box.set_halign(Align::End);
+        battery_box.set_valign(Align::Center);
+        battery_box.add_css_class("top-battery-badge");
+
+        let battery_icon = Image::from_icon_name("battery-level-80-symbolic");
+        battery_icon.set_pixel_size(14);
+        battery_icon.add_css_class("battery-icon");
+
+        let battery_label = Label::new(Some("100%"));
+        battery_label.add_css_class("battery-text");
+
+        battery_box.append(&battery_icon);
+        battery_box.append(&battery_label);
 
         // Read real battery info immediately
         if let Some((pct, charging)) = dashboard::get_battery_info() {
-            let icon = if charging { "⚡" } else { "🔋" };
-            battery_label.set_text(&format!("{}% {}", pct, icon));
+            battery_label.set_text(&format!("{}%", pct));
+            battery_icon.set_icon_name(Some(get_battery_icon_name(pct, charging)));
         }
 
         // Live battery poller every 15 seconds
-        let bat_update = battery_label.clone();
+        let bat_update_lbl = battery_label.clone();
+        let bat_update_ico = battery_icon.clone();
         glib::timeout_add_local(Duration::from_secs(15), move || {
             if let Some((pct, charging)) = dashboard::get_battery_info() {
-                let icon = if charging { "⚡" } else { "🔋" };
-                bat_update.set_text(&format!("{}% {}", pct, icon));
+                bat_update_lbl.set_text(&format!("{}%", pct));
+                bat_update_ico.set_icon_name(Some(get_battery_icon_name(pct, charging)));
             }
             glib::ControlFlow::Continue
         });
 
         // Drop Shelf file count badge updater on drops_btn (every 500ms)
-        let drops_btn_badge = drops_btn.clone();
+        let drops_badge_poller = drops_badge.clone();
+        let drops_btn_poller = drops_btn.clone();
         glib::timeout_add_local(Duration::from_millis(500), move || {
             let count = drop_shelf::get_shelf_files().len();
             if count > 0 {
-                drops_btn_badge.set_label(&format!("📥 {}", count));
-                drops_btn_badge.add_css_class("has-drops");
+                drops_badge_poller.set_text(&count.to_string());
+                drops_badge_poller.set_visible(true);
+                drops_btn_poller.add_css_class("has-drops");
             } else {
-                drops_btn_badge.set_label("📥");
-                drops_btn_badge.remove_css_class("has-drops");
+                drops_badge_poller.set_visible(false);
+                drops_btn_poller.remove_css_class("has-drops");
             }
             glib::ControlFlow::Continue
         });
 
-        right_box.append(&battery_label);
+        right_box.append(&battery_box);
 
         top_bar.append(&nav_box);
         top_bar.append(&right_box);
@@ -279,5 +316,33 @@ impl ModulesContainer {
 
     pub fn switch_to_drops(&self) {
         (self.switch_to_drops_fn)();
+    }
+}
+
+fn get_battery_icon_name(pct: u32, charging: bool) -> &'static str {
+    if charging {
+        if pct >= 90 {
+            "battery-level-100-charging-symbolic"
+        } else if pct >= 70 {
+            "battery-level-80-charging-symbolic"
+        } else if pct >= 50 {
+            "battery-level-60-charging-symbolic"
+        } else if pct >= 30 {
+            "battery-level-30-charging-symbolic"
+        } else {
+            "battery-level-10-charging-symbolic"
+        }
+    } else {
+        if pct >= 90 {
+            "battery-level-100-symbolic"
+        } else if pct >= 70 {
+            "battery-level-80-symbolic"
+        } else if pct >= 50 {
+            "battery-level-60-symbolic"
+        } else if pct >= 30 {
+            "battery-level-30-symbolic"
+        } else {
+            "battery-level-10-symbolic"
+        }
     }
 }

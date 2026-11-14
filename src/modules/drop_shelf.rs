@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box as GtkBox, Button, Label, Orientation, Picture, ScrolledWindow,
+    Align, Box as GtkBox, Button, Image, Label, Orientation, Picture, ScrolledWindow,
 };
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -78,18 +78,18 @@ fn format_file_size(bytes: u64) -> String {
     }
 }
 
-fn get_file_icon(ext: &str) -> &'static str {
+fn get_file_icon_name(ext: &str) -> &'static str {
     match ext {
-        "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg" | "bmp" => "🖼️",
-        "pdf" => "📕",
-        "rs" | "py" | "js" | "ts" | "c" | "cpp" | "h" | "html" | "css" | "sh" | "json" | "toml" | "yaml" | "yml" => "💻",
-        "zip" | "tar" | "gz" | "7z" | "rar" | "xz" => "📦",
-        "mp3" | "wav" | "flac" | "ogg" | "m4a" | "aac" => "🎵",
-        "mp4" | "mkv" | "mov" | "avi" | "webm" => "🎬",
-        "doc" | "docx" | "odt" | "rtf" | "txt" | "md" => "📄",
-        "xls" | "xlsx" | "csv" | "ods" => "📊",
-        "ppt" | "pptx" | "key" | "odp" => "📑",
-        _ => "📎",
+        "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg" | "bmp" => "image-x-generic-symbolic",
+        "pdf" => "x-office-document-symbolic",
+        "rs" | "py" | "js" | "ts" | "c" | "cpp" | "h" | "html" | "css" | "sh" | "json" | "toml" | "yaml" | "yml" => "text-x-generic-symbolic",
+        "zip" | "tar" | "gz" | "7z" | "rar" | "xz" => "package-x-generic-symbolic",
+        "mp3" | "wav" | "flac" | "ogg" | "m4a" | "aac" => "audio-x-generic-symbolic",
+        "mp4" | "mkv" | "mov" | "avi" | "webm" => "video-x-generic-symbolic",
+        "doc" | "docx" | "odt" | "rtf" | "txt" | "md" => "x-office-document-symbolic",
+        "xls" | "xlsx" | "csv" | "ods" => "x-office-spreadsheet-symbolic",
+        "ppt" | "pptx" | "key" | "odp" => "x-office-presentation-symbolic",
+        _ => "text-x-generic-symbolic",
     }
 }
 
@@ -106,13 +106,19 @@ impl DropShelfWidget {
         container.set_hexpand(true);
         container.add_css_class("drop-shelf-widget");
 
-        // Header Row [ 📥 Transit Shelf ] [ 3 files badge ] [ + Add ] [ Clear All ]
+        // Header Row [ Icon + Title ] [ Items badge ] [ + Add ] [ Clear All ]
         let header = GtkBox::new(Orientation::Horizontal, 8);
         header.set_valign(Align::Center);
         header.add_css_class("drop-shelf-header");
 
-        let title_label = Label::new(Some("📥 File Transit Shelf"));
+        let title_box = GtkBox::new(Orientation::Horizontal, 6);
+        title_box.set_valign(Align::Center);
+        let title_icon = Image::from_icon_name("folder-download-symbolic");
+        title_icon.set_pixel_size(14);
+        let title_label = Label::new(Some("File Transit Shelf"));
         title_label.add_css_class("drop-shelf-title");
+        title_box.append(&title_icon);
+        title_box.append(&title_label);
 
         let count_badge = Label::new(Some("0 items"));
         count_badge.add_css_class("drop-shelf-badge");
@@ -132,7 +138,7 @@ impl DropShelfWidget {
         header_actions.append(&add_btn);
         header_actions.append(&clear_btn);
 
-        header.append(&title_label);
+        header.append(&title_box);
         header.append(&count_badge);
         header.append(&header_actions);
 
@@ -216,13 +222,14 @@ impl DropShelfWidget {
 
             if files.is_empty() {
                 // Empty state drop zone
-                let empty_zone = GtkBox::new(Orientation::Vertical, 4);
+                let empty_zone = GtkBox::new(Orientation::Vertical, 6);
                 empty_zone.set_valign(Align::Center);
                 empty_zone.set_halign(Align::Fill);
                 empty_zone.set_hexpand(true);
                 empty_zone.add_css_class("drop-shelf-empty");
 
-                let icon = Label::new(Some("📥"));
+                let icon = Image::from_icon_name("folder-download-symbolic");
+                icon.set_pixel_size(28);
                 icon.add_css_class("drop-empty-icon");
 
                 let main_text = Label::new(Some("Drop files here to hold in transit"));
@@ -274,9 +281,10 @@ impl DropShelfWidget {
                         pic.add_css_class("drop-card-picture");
                         icon_area.append(&pic);
                     } else {
-                        let icon_lbl = Label::new(Some(get_file_icon(&ext)));
-                        icon_lbl.add_css_class("drop-card-icon");
-                        icon_area.append(&icon_lbl);
+                        let icon = Image::from_icon_name(get_file_icon_name(&ext));
+                        icon.set_pixel_size(24);
+                        icon.add_css_class("drop-card-icon");
+                        icon_area.append(&icon);
                     }
 
                     // 2. Name
@@ -290,12 +298,15 @@ impl DropShelfWidget {
                     let size_lbl = Label::new(Some(&item.size_str));
                     size_lbl.add_css_class("drop-card-size");
 
-                    // 4. Action bar [ 📋 Copy ] [ 📂 Reveal ] [ ✕ Remove ]
+                    // 4. Action bar [ Copy ] [ Reveal ] [ Remove ]
                     let action_bar = GtkBox::new(Orientation::Horizontal, 2);
                     action_bar.set_halign(Align::Center);
                     action_bar.add_css_class("drop-card-actions");
 
-                    let copy_btn = Button::with_label("📋");
+                    let copy_btn = Button::new();
+                    let copy_ico = Image::from_icon_name("edit-copy-symbolic");
+                    copy_ico.set_pixel_size(12);
+                    copy_btn.set_child(Some(&copy_ico));
                     copy_btn.add_css_class("drop-card-btn");
                     copy_btn.set_tooltip_text(Some("Copy file path"));
                     let path_for_copy = item.path.clone();
@@ -307,7 +318,10 @@ impl DropShelfWidget {
                         }
                     });
 
-                    let reveal_btn = Button::with_label("📂");
+                    let reveal_btn = Button::new();
+                    let reveal_ico = Image::from_icon_name("folder-open-symbolic");
+                    reveal_ico.set_pixel_size(12);
+                    reveal_btn.set_child(Some(&reveal_ico));
                     reveal_btn.add_css_class("drop-card-btn");
                     reveal_btn.set_tooltip_text(Some("Reveal in file manager"));
                     let path_for_reveal = item.path.clone();
@@ -318,7 +332,10 @@ impl DropShelfWidget {
                             .spawn();
                     });
 
-                    let remove_btn = Button::with_label("✕");
+                    let remove_btn = Button::new();
+                    let del_ico = Image::from_icon_name("window-close-symbolic");
+                    del_ico.set_pixel_size(12);
+                    remove_btn.set_child(Some(&del_ico));
                     remove_btn.add_css_class("drop-card-btn");
                     remove_btn.add_css_class("drop-card-btn-remove");
                     remove_btn.set_tooltip_text(Some("Remove from tray"));

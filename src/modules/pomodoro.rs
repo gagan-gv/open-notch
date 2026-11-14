@@ -101,7 +101,7 @@ impl PomodoroWidget {
             total_seconds: work_min * 60,
         });
 
-        let mode_label = Label::new(Some("⚡ Focus Session"));
+        let mode_label = Label::new(Some("Focus Session"));
         mode_label.add_css_class("pomodoro-mode-label");
 
         let timer_label = Label::new(Some(&format_time(work_min * 60)));
@@ -298,12 +298,12 @@ impl PomodoroWidget {
                         if s.mode == PomodoroMode::Work {
                             s.mode = PomodoroMode::Break;
                             s.remaining_seconds = s.break_seconds;
-                            mode_label_tick.set_text("☕ Short Break");
+                            mode_label_tick.set_text("Short Break");
                             switch_mode_btn_tick.set_label("Switch to Focus");
                         } else {
                             s.mode = PomodoroMode::Work;
                             s.remaining_seconds = s.work_seconds;
-                            mode_label_tick.set_text("⚡ Focus Session");
+                            mode_label_tick.set_text("Focus Session");
                             switch_mode_btn_tick.set_label("Switch to Break");
                         }
                         s.is_running = false;
@@ -320,9 +320,9 @@ impl PomodoroWidget {
 
                 // Send desktop notification when timer completes
                 let (summary, body) = if new_mode == PomodoroMode::Break {
-                    ("⚡ Focus Session Complete!", "Great job! Time for a short break.")
+                    ("Focus Session Complete", "Great job! Time for a short break.")
                 } else {
-                    ("☕ Break Finished!", "Ready to dive back into focus mode?")
+                    ("Break Finished", "Ready to dive back into focus mode?")
                 };
                 let _ = std::process::Command::new("notify-send")
                     .args(["-a", "OpenNotch", summary, body])
@@ -379,12 +379,12 @@ impl PomodoroWidget {
                 if s.mode == PomodoroMode::Work {
                     s.mode = PomodoroMode::Break;
                     s.remaining_seconds = s.break_seconds;
-                    mode_label_switch.set_text("☕ Short Break");
+                    mode_label_switch.set_text("Short Break");
                     switch_btn_label.set_label("Switch to Focus");
                 } else {
                     s.mode = PomodoroMode::Work;
                     s.remaining_seconds = s.work_seconds;
-                    mode_label_switch.set_text("⚡ Focus Session");
+                    mode_label_switch.set_text("Focus Session");
                     switch_btn_label.set_label("Switch to Break");
                 }
                 timer_label_switch.set_text(&format_time(s.remaining_seconds));

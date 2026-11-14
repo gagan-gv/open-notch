@@ -90,7 +90,7 @@ impl CalendarWidget {
         agenda_card.add_css_class("agenda-card");
         agenda_card.set_hexpand(true);
 
-        // Agenda Header with Title + [📅 Open Calendar] button
+        // Agenda Header with Title + [Open Calendar] button
         let agenda_header = GtkBox::new(Orientation::Horizontal, 6);
         agenda_header.set_valign(Align::Center);
 
@@ -100,7 +100,14 @@ impl CalendarWidget {
         agenda_title.set_hexpand(true);
 
         // Button to launch system calendar app
-        let sys_app_btn = Button::with_label("📅 Open Calendar");
+        let sys_app_btn = Button::new();
+        let sys_app_box = GtkBox::new(Orientation::Horizontal, 5);
+        let cal_icon = gtk4::Image::from_icon_name("x-office-calendar-symbolic");
+        cal_icon.set_pixel_size(12);
+        let cal_label = Label::new(Some("Open Calendar"));
+        sys_app_box.append(&cal_icon);
+        sys_app_box.append(&cal_label);
+        sys_app_btn.set_child(Some(&sys_app_box));
         sys_app_btn.add_css_class("agenda-sync-btn");
         sys_app_btn.set_tooltip_text(Some("Open in system Calendar app"));
         sys_app_btn.connect_clicked(|_| {
@@ -199,7 +206,7 @@ fn render_agenda_items(events_list_box: &GtkBox) {
         empty_box.set_valign(Align::Center);
         empty_box.add_css_class("agenda-empty-box");
 
-        let empty_title = Label::new(Some("🎉 You're done for the day!"));
+        let empty_title = Label::new(Some("You're done for the day!"));
         empty_title.add_css_class("agenda-empty-title");
 
         let empty_sub = Label::new(Some("All clear — no upcoming events scheduled"));
@@ -225,13 +232,14 @@ fn render_agenda_items(events_list_box: &GtkBox) {
 
             // If synced from system calendar, show a badge
             if ev.source == "system" {
-                let sys_badge = Label::new(Some("📅"));
+                let sys_badge = gtk4::Image::from_icon_name("x-office-calendar-symbolic");
+                sys_badge.set_pixel_size(12);
                 sys_badge.add_css_class("agenda-sys-badge");
                 sys_badge.set_tooltip_text(Some("Synced from system calendar"));
                 row.append(&sys_badge);
             }
 
-            let del_btn = Button::with_label("✕");
+            let del_btn = Button::from_icon_name("window-close-symbolic");
             del_btn.add_css_class("agenda-item-del-btn");
             del_btn.set_tooltip_text(Some("Dismiss / remove"));
 

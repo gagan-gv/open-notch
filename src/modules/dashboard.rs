@@ -132,14 +132,16 @@ fn build_media_panel() -> (GtkBox, MediaUpdaterFn) {
     art_box.set_valign(Align::Center);
     art_box.add_css_class("dashboard-album-art");
 
-    let speaker_icon = Label::new(Some("🔊"));
+    let speaker_icon = gtk4::Image::from_icon_name("audio-speakers-symbolic");
+    speaker_icon.set_pixel_size(32);
     speaker_icon.set_valign(Align::Center);
     speaker_icon.set_halign(Align::Center);
     speaker_icon.add_css_class("dashboard-speaker-icon");
     art_box.append(&speaker_icon);
 
     // Spotify/App badge in the corner of album art
-    let app_badge = Label::new(Some("🟢"));
+    let app_badge = gtk4::Image::from_icon_name("audio-x-generic-symbolic");
+    app_badge.set_pixel_size(12);
     app_badge.set_valign(Align::End);
     app_badge.set_halign(Align::End);
     app_badge.add_css_class("dashboard-app-badge");
@@ -184,37 +186,42 @@ fn build_media_panel() -> (GtkBox, MediaUpdaterFn) {
     time_row.append(&time_curr);
     time_row.append(&time_total);
 
-    // Playback Controls Row: [ ⏮ ] [ ⏸ ] [ ⏭ ] ... [ ♡ ]
+    // Playback Controls Row: Prev, Play/Pause, Next, Favorite
     let controls_row = GtkBox::new(Orientation::Horizontal, 10);
     controls_row.set_valign(Align::Center);
     controls_row.add_css_class("dashboard-controls-row");
 
-    let prev_btn = Button::with_label("⏮");
+    let prev_btn = Button::from_icon_name("media-skip-backward-symbolic");
     prev_btn.add_css_class("dashboard-ctrl-btn");
     prev_btn.connect_clicked(|_| {
         super::mpris::send_mpris_action("previous");
     });
 
-    let play_pause_btn = Button::with_label("⏸");
+    let play_pause_btn = Button::from_icon_name("media-playback-pause-symbolic");
     play_pause_btn.add_css_class("dashboard-play-btn");
-    play_pause_btn.connect_clicked(|btn| {
-        if btn.label().as_deref() == Some("⏸") {
-            btn.set_label("▶");
+    let play_state = Rc::new(RefCell::new(true));
+    let play_state_clone = play_state.clone();
+    let play_btn_action = play_pause_btn.clone();
+    play_pause_btn.connect_clicked(move |_| {
+        let mut is_p = play_state_clone.borrow_mut();
+        *is_p = !*is_p;
+        if *is_p {
+            play_btn_action.set_icon_name("media-playback-pause-symbolic");
         } else {
-            btn.set_label("⏸");
+            play_btn_action.set_icon_name("media-playback-start-symbolic");
         }
         super::mpris::send_mpris_action("play_pause");
     });
     let play_btn_update = play_pause_btn.clone();
 
-    let next_btn = Button::with_label("⏭");
+    let next_btn = Button::from_icon_name("media-skip-forward-symbolic");
     next_btn.add_css_class("dashboard-ctrl-btn");
     next_btn.connect_clicked(|_| {
         super::mpris::send_mpris_action("next");
     });
 
     // Heart / Favorite toggle button
-    let heart_btn = Button::with_label("♡");
+    let heart_btn = Button::from_icon_name("emblem-favorite-symbolic");
     heart_btn.add_css_class("dashboard-heart-btn");
     heart_btn.set_halign(Align::End);
     heart_btn.set_hexpand(true);
@@ -224,10 +231,8 @@ fn build_media_panel() -> (GtkBox, MediaUpdaterFn) {
         let mut liked = is_liked.borrow_mut();
         *liked = !*liked;
         if *liked {
-            heart_toggle.set_label("♥");
             heart_toggle.add_css_class("heart-active");
         } else {
-            heart_toggle.set_label("♡");
             heart_toggle.remove_css_class("heart-active");
         }
     });
@@ -268,18 +273,20 @@ fn build_media_panel() -> (GtkBox, MediaUpdaterFn) {
                 }
 
                 if media.is_playing {
-                    play_btn_update.set_label("⏸");
+                    *play_state.borrow_mut() = true;
+                    play_btn_update.set_icon_name("media-playback-pause-symbolic");
                 } else {
-                    play_btn_update.set_label("▶");
+                    *play_state.borrow_mut() = false;
+                    play_btn_update.set_icon_name("media-playback-start-symbolic");
                 }
 
                 let p_name = media.player_display_name.to_lowercase();
                 if p_name.contains("spotify") {
-                    app_badge.set_text("🟢");
+                    app_badge.set_icon_name(Some("audio-x-generic-symbolic"));
                 } else if p_name.contains("firefox") || p_name.contains("chrome") || p_name.contains("brave") {
-                    app_badge.set_text("🌐");
+                    app_badge.set_icon_name(Some("web-browser-symbolic"));
                 } else {
-                    app_badge.set_text("🎵");
+                    app_badge.set_icon_name(Some("audio-x-generic-symbolic"));
                 }
             }
         }
@@ -422,7 +429,7 @@ fn render_dashboard_events(events_list_box: &GtkBox) {
         empty_box.set_vexpand(true);
         empty_box.add_css_class("agenda-empty-box");
 
-        let empty_title = Label::new(Some("🎉 You're done for the day!"));
+        let empty_title = Label::new(Some("You're done for the day!"));
         empty_title.add_css_class("agenda-empty-title");
 
         let empty_sub = Label::new(Some("All clear — no upcoming events scheduled"));

@@ -3,7 +3,7 @@ use crate::modules::ModulesContainer;
 use gtk4::prelude::*;
 use gtk4::{
     Align, ApplicationWindow, Box as GtkBox, CenterBox, DrawingArea, EventControllerMotion, EventControllerScroll,
-    EventControllerScrollFlags, Label, Orientation, PropagationPhase, Revealer,
+    EventControllerScrollFlags, Image, Label, Orientation, PropagationPhase, Revealer,
     RevealerTransitionType,
 };
 use std::cell::RefCell;
@@ -34,7 +34,8 @@ impl NotchWidget {
         left_pill_box.set_valign(Align::Center);
         left_pill_box.set_visible(false);
 
-        let left_pill_icon = Label::new(Some("🎵"));
+        let left_pill_icon = Image::from_icon_name("audio-x-generic-symbolic");
+        left_pill_icon.set_pixel_size(12);
         left_pill_icon.add_css_class("pill-icon");
 
         let left_pill_text = Label::new(Some(""));
@@ -175,7 +176,7 @@ impl NotchWidget {
 
             if is_copied {
                 // Clipboard copy instant confirmation flash on resting pill
-                left_icon_monitor.set_text("📋");
+                left_icon_monitor.set_icon_name(Some("edit-copy-symbolic"));
                 left_text_monitor.set_text("Copied");
                 left_text_monitor.set_visible(true);
                 left_pill_box_monitor.set_visible(true);
@@ -193,11 +194,7 @@ impl NotchWidget {
 
             } else if pomo.is_running && is_playing {
                 // Both Pomodoro & Music are active
-                let icon_str = match pomo.mode {
-                    crate::modules::pomodoro::PomodoroMode::Work => "🍅",
-                    crate::modules::pomodoro::PomodoroMode::Break => "☕",
-                };
-                left_icon_monitor.set_text(icon_str);
+                left_icon_monitor.set_icon_name(Some("alarm-symbolic"));
 
                 let min = pomo.remaining_seconds / 60;
                 let sec = pomo.remaining_seconds % 60;
@@ -228,11 +225,11 @@ impl NotchWidget {
 
             } else if pomo.is_running {
                 // Only Pomodoro is running
-                let (icon_str, title_str) = match pomo.mode {
-                    crate::modules::pomodoro::PomodoroMode::Work => ("🍅", "Focus"),
-                    crate::modules::pomodoro::PomodoroMode::Break => ("☕", "Break"),
+                left_icon_monitor.set_icon_name(Some("alarm-symbolic"));
+                let title_str = match pomo.mode {
+                    crate::modules::pomodoro::PomodoroMode::Work => "Focus",
+                    crate::modules::pomodoro::PomodoroMode::Break => "Break",
                 };
-                left_icon_monitor.set_text(icon_str);
                 left_text_monitor.set_text(title_str);
                 left_text_monitor.set_visible(true);
                 left_pill_box_monitor.set_visible(true);
@@ -261,12 +258,8 @@ impl NotchWidget {
                 if let Some(ref info) = media {
                     let is_spotify = info.player_display_name.to_lowercase().contains("spotify");
                     *spotify_media.borrow_mut() = is_spotify;
-                    if is_spotify {
-                        left_icon_monitor.set_text("🟢");
-                    } else {
-                        left_icon_monitor.set_text("🎵");
-                    }
                 }
+                left_icon_monitor.set_icon_name(Some("audio-x-generic-symbolic"));
                 left_text_monitor.set_visible(false);
                 left_pill_box_monitor.set_visible(true);
 
@@ -283,7 +276,7 @@ impl NotchWidget {
 
             } else if !drop_files.is_empty() {
                 // Drop Shelf has files in transit
-                left_icon_monitor.set_text("📥");
+                left_icon_monitor.set_icon_name(Some("folder-download-symbolic"));
                 left_text_monitor.set_text(&format!("{}", drop_files.len()));
                 left_text_monitor.set_visible(true);
                 left_pill_box_monitor.set_visible(true);
