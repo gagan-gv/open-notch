@@ -143,11 +143,14 @@ impl ModulesContainer {
         let hb3 = home_btn.clone();
         let fb3 = focus_btn.clone();
         let nb3 = notes_btn.clone();
+        let notes_tv = notes_widget.text_view.clone();
         notes_btn.connect_clicked(move |_| {
             stack_notes.set_visible_child_name("notes");
             nb3.add_css_class("top-nav-active");
             hb3.remove_css_class("top-nav-active");
             fb3.remove_css_class("top-nav-active");
+            notes_tv.grab_focus();
+            crate::window::position::grab_x11_input_focus();
         });
 
         container.append(&top_bar);

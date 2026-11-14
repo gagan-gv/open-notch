@@ -30,7 +30,35 @@ extern "C" {
         data: *const u8,
         nelements: c_int,
     ) -> c_int;
+    fn XSetInputFocus(
+        display: *mut c_void,
+        focus: c_ulong,
+        revert_to: c_int,
+        time: c_ulong,
+    ) -> c_int;
+    fn XSendEvent(
+        display: *mut c_void,
+        w: c_ulong,
+        propagate: c_int,
+        event_mask: std::ffi::c_long,
+        event_send: *mut c_void,
+    ) -> c_int;
+    fn XDefaultRootWindow(display: *mut c_void) -> c_ulong;
 }
+
+#[repr(C)]
+struct XClientMessageEvent {
+    type_: c_int,
+    serial: c_ulong,
+    send_event: c_int,
+    display: *mut c_void,
+    window: c_ulong,
+    message_type: c_ulong,
+    format: c_int,
+    data: [std::ffi::c_long; 5],
+}
+
+static CURRENT_XID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Applies EWMH Dock & Always-On-Top properties and anchors the window at top-center
 pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i32) {
@@ -57,6 +85,7 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
     unsafe {
         let xdisplay = gdk4_x11::ffi::gdk_x11_display_get_xdisplay(x11_display.to_glib_none().0);
         let xid = x11_surface.xid();
+        CURRENT_XID.store(xid, std::sync::atomic::Ordering::Relaxed);
 
         // Query monitor width to calculate center
         let monitor = display
@@ -71,7 +100,7 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
 
         let atom_atom = XInternAtom(xdisplay, CString::new("ATOM").unwrap().as_ptr(), 0);
 
-        // 1. _NET_WM_WINDOW_TYPE = _NET_WM_WINDOW_TYPE_DOCK
+        // 1. _NET_WM_WINDOW_TYPE = _NET_WM_WINDOW_TYPE_DOCK (Keeps window above Mutter panel at y=0)
         let net_wm_window_type = CString::new("_NET_WM_WINDOW_TYPE").unwrap();
         let atom_window_type = XInternAtom(xdisplay, net_wm_window_type.as_ptr(), 0);
 
@@ -111,6 +140,48 @@ pub fn position_x11_top_center(window: &ApplicationWindow, width: i32, height: i
 
         // 3. Move and size window to top-center
         XMoveResizeWindow(xdisplay, xid, target_x, target_y, effective_w, height.max(450));
+        XFlush(xdisplay);
+    }
+}
+
+/// Gives direct X11 keyboard input focus to the notch window
+pub fn grab_x11_input_focus() {
+    let xid = CURRENT_XID.load(std::sync::atomic::Ordering::Relaxed);
+    if xid == 0 {
+        return;
+    }
+
+    let display = match Display::default() {
+        Some(d) => d,
+        None => return,
+    };
+
+    let x11_display = match display.downcast_ref::<gdk4_x11::X11Display>() {
+        Some(d) => d,
+        None => return,
+    };
+
+    unsafe {
+        let xdisplay = gdk4_x11::ffi::gdk_x11_display_get_xdisplay(x11_display.to_glib_none().0);
+        let root = XDefaultRootWindow(xdisplay);
+
+        // Send _NET_ACTIVE_WINDOW ClientMessage to root window (notifies Mutter to route focus to dock)
+        let net_active_window = CString::new("_NET_ACTIVE_WINDOW").unwrap();
+        let atom_active = XInternAtom(xdisplay, net_active_window.as_ptr(), 0);
+
+        let mut ev: XClientMessageEvent = std::mem::zeroed();
+        ev.type_ = 33; // ClientMessage
+        ev.window = xid as c_ulong;
+        ev.message_type = atom_active;
+        ev.format = 32;
+        ev.data[0] = 2; // source indication: 2 = direct user interaction
+        ev.data[1] = 0; // CurrentTime
+
+        let mask = 0x0010_0000 | 0x0008_0000; // SubstructureNotifyMask | SubstructureRedirectMask
+        XSendEvent(xdisplay, root, 0, mask, &mut ev as *mut _ as *mut c_void);
+
+        // Also directly tell X server to focus this window
+        XSetInputFocus(xdisplay, xid as c_ulong, 2, 0);
         XFlush(xdisplay);
     }
 }

@@ -1,10 +1,14 @@
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Label, Orientation, PolicyType, ScrolledWindow, TextView};
+use gtk4::{
+    Align, Box as GtkBox, GestureClick, Label, Orientation, PolicyType, PropagationPhase,
+    ScrolledWindow, TextView,
+};
 use std::fs;
 use std::path::PathBuf;
 
 pub struct NotesWidget {
     pub container: GtkBox,
+    pub text_view: TextView,
 }
 
 impl NotesWidget {
@@ -29,6 +33,9 @@ impl NotesWidget {
         header_row.append(&status_badge);
 
         let text_view = TextView::new();
+        text_view.set_editable(true);
+        text_view.set_cursor_visible(true);
+        text_view.set_focusable(true);
         text_view.set_wrap_mode(gtk4::WrapMode::Word);
         text_view.add_css_class("notes-editor");
         text_view.set_left_margin(12);
@@ -41,6 +48,26 @@ impl NotesWidget {
         scrolled.set_min_content_height(140);
         scrolled.set_child(Some(&text_view));
         scrolled.add_css_class("notes-scrolled-window");
+
+        // Ensure clicking anywhere in the text view grabs GTK and X11 focus
+        let tv_click = GestureClick::new();
+        tv_click.set_propagation_phase(PropagationPhase::Capture);
+        let tv_focus = text_view.clone();
+        tv_click.connect_pressed(move |_, _, _, _| {
+            tv_focus.grab_focus();
+            crate::window::position::grab_x11_input_focus();
+        });
+        text_view.add_controller(tv_click);
+
+        // Also ensure clicking empty space in the scrolled window focuses the editor
+        let scrolled_click = GestureClick::new();
+        scrolled_click.set_propagation_phase(PropagationPhase::Capture);
+        let tv_scrolled_focus = text_view.clone();
+        scrolled_click.connect_pressed(move |_, _, _, _| {
+            tv_scrolled_focus.grab_focus();
+            crate::window::position::grab_x11_input_focus();
+        });
+        scrolled.add_controller(scrolled_click);
 
         let notes_path = Self::get_notes_path();
 
@@ -69,7 +96,10 @@ impl NotesWidget {
         container.append(&header_row);
         container.append(&scrolled);
 
-        Self { container }
+        Self {
+            container,
+            text_view,
+        }
     }
 
     fn get_notes_path() -> Option<PathBuf> {

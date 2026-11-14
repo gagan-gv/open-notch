@@ -154,6 +154,15 @@ impl NotchWidget {
                         return;
                     }
 
+                    // If user is actively typing in a text field (e.g. notes scratchpad), do not close
+                    let has_text_focus = gtk4::prelude::GtkWindowExt::focus(&window_check)
+                        .map(|w| w.is::<gtk4::TextView>() || w.is::<gtk4::Entry>())
+                        .unwrap_or(false);
+                    if has_text_focus {
+                        *is_hovered_check.borrow_mut() = true;
+                        return;
+                    }
+
                     *is_hovered_check.borrow_mut() = false;
                     revealer_check.set_reveal_child(false);
                     super::position::update_notch_input_region(
@@ -168,8 +177,55 @@ impl NotchWidget {
             );
         });
 
+        // When notch window loses focus to an external window and pointer is not inside, collapse
+        let is_hovered_active = Rc::clone(&is_hovered);
+        let revealer_active = revealer.clone();
+        let window_active = window.clone();
+        let cfg_active = config.clone();
+        let ctrl_active = motion_ctrl.clone();
+
+        window.connect_is_active_notify(move |win| {
+            if !win.is_active() && !ctrl_active.contains_pointer() {
+                *is_hovered_active.borrow_mut() = false;
+                revealer_active.set_reveal_child(false);
+                super::position::update_notch_input_region(
+                    &window_active,
+                    false,
+                    cfg_active.general.collapsed_width,
+                    cfg_active.general.collapsed_height,
+                    cfg_active.general.expanded_width,
+                    cfg_active.general.expanded_height,
+                );
+            }
+        });
+
+        // Escape key to dismiss/collapse the notch
+        let key_ctrl = gtk4::EventControllerKey::new();
+        let revealer_esc = revealer.clone();
+        let window_esc = window.clone();
+        let cfg_esc = config.clone();
+        let is_hovered_esc = Rc::clone(&is_hovered);
+        key_ctrl.connect_key_pressed(move |_, key, _, _| {
+            if key == gtk4::gdk::Key::Escape {
+                *is_hovered_esc.borrow_mut() = false;
+                revealer_esc.set_reveal_child(false);
+                super::position::update_notch_input_region(
+                    &window_esc,
+                    false,
+                    cfg_esc.general.collapsed_width,
+                    cfg_esc.general.collapsed_height,
+                    cfg_esc.general.expanded_width,
+                    cfg_esc.general.expanded_height,
+                );
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+
         root_box.add_controller(motion_ctrl);
         root_box.add_controller(scroll_ctrl);
+        root_box.add_controller(key_ctrl);
 
         Self { root_box }
     }
