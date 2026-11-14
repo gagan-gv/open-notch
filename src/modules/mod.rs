@@ -17,7 +17,7 @@ use pomodoro::PomodoroWidget;
 
 use crate::config::Config;
 use gtk4::prelude::*;
-use gtk4::{Align, Box as GtkBox, Button, Image, Label, Orientation, Stack};
+use gtk4::{Align, Box as GtkBox, Button, Image, Label, Orientation, Separator, Stack, Switch};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -164,6 +164,16 @@ impl ModulesContainer {
 
         right_box.append(&battery_box);
 
+        // Settings Button near battery icon
+        let settings_icon = Image::from_icon_name("preferences-system-symbolic");
+        settings_icon.set_pixel_size(14);
+        let settings_btn = Button::new();
+        settings_btn.set_child(Some(&settings_icon));
+        settings_btn.add_css_class("top-settings-btn");
+        settings_btn.set_tooltip_text(Some("Settings & Preferences"));
+
+        right_box.append(&settings_btn);
+
         top_bar.append(&nav_box);
         top_bar.append(&right_box);
 
@@ -199,6 +209,10 @@ impl ModulesContainer {
         let calendar_widget = CalendarWidget::new();
         stack.add_named(&calendar_widget.container, Some("calendar"));
 
+        // 7. Settings View (In-shelf Preferences)
+        let settings_view = build_settings_view();
+        stack.add_named(&settings_view, Some("settings"));
+
         // Set default screen to dashboard (matching screenshot)
         stack.set_visible_child_name("dashboard");
 
@@ -209,6 +223,7 @@ impl ModulesContainer {
         let cb = clip_btn.clone();
         let fb = focus_btn.clone();
         let nb = notes_btn.clone();
+        let sb = settings_btn.clone();
         home_btn.connect_clicked(move |_| {
             stack_home.set_visible_child_name("dashboard");
             hb.add_css_class("top-nav-active");
@@ -216,6 +231,7 @@ impl ModulesContainer {
             cb.remove_css_class("top-nav-active");
             fb.remove_css_class("top-nav-active");
             nb.remove_css_class("top-nav-active");
+            sb.remove_css_class("top-nav-active");
         });
 
         let stack_drops = stack.clone();
@@ -224,6 +240,7 @@ impl ModulesContainer {
         let cb_d = clip_btn.clone();
         let fb_d = focus_btn.clone();
         let nb_d = notes_btn.clone();
+        let sb_d = settings_btn.clone();
         let drop_shelf_refresh = drop_shelf_widget.refresh_ui_fn.clone();
         drops_btn.connect_clicked(move |_| {
             stack_drops.set_visible_child_name("drops");
@@ -232,6 +249,7 @@ impl ModulesContainer {
             cb_d.remove_css_class("top-nav-active");
             fb_d.remove_css_class("top-nav-active");
             nb_d.remove_css_class("top-nav-active");
+            sb_d.remove_css_class("top-nav-active");
             drop_shelf_refresh();
         });
 
@@ -241,6 +259,7 @@ impl ModulesContainer {
         let cb_c = clip_btn.clone();
         let fb_c = focus_btn.clone();
         let nb_c = notes_btn.clone();
+        let sb_c = settings_btn.clone();
         let clip_refresh_click = clipboard_widget.refresh_ui_fn.clone();
         clip_btn.connect_clicked(move |_| {
             stack_clip.set_visible_child_name("clipboard");
@@ -249,6 +268,7 @@ impl ModulesContainer {
             db_c.remove_css_class("top-nav-active");
             fb_c.remove_css_class("top-nav-active");
             nb_c.remove_css_class("top-nav-active");
+            sb_c.remove_css_class("top-nav-active");
             clip_refresh_click();
         });
 
@@ -258,6 +278,7 @@ impl ModulesContainer {
         let cb2 = clip_btn.clone();
         let fb2 = focus_btn.clone();
         let nb2 = notes_btn.clone();
+        let sb2 = settings_btn.clone();
         focus_btn.connect_clicked(move |_| {
             stack_focus.set_visible_child_name("pomodoro");
             fb2.add_css_class("top-nav-active");
@@ -265,6 +286,7 @@ impl ModulesContainer {
             db2.remove_css_class("top-nav-active");
             cb2.remove_css_class("top-nav-active");
             nb2.remove_css_class("top-nav-active");
+            sb2.remove_css_class("top-nav-active");
         });
 
         let stack_notes = stack.clone();
@@ -273,6 +295,7 @@ impl ModulesContainer {
         let cb3 = clip_btn.clone();
         let fb3 = focus_btn.clone();
         let nb3 = notes_btn.clone();
+        let sb3 = settings_btn.clone();
         let notes_tv = notes_widget.text_view.clone();
         notes_btn.connect_clicked(move |_| {
             stack_notes.set_visible_child_name("notes");
@@ -281,8 +304,33 @@ impl ModulesContainer {
             db3.remove_css_class("top-nav-active");
             cb3.remove_css_class("top-nav-active");
             fb3.remove_css_class("top-nav-active");
+            sb3.remove_css_class("top-nav-active");
             notes_tv.grab_focus();
             crate::window::position::grab_x11_input_focus();
+        });
+
+        // Settings button click handler
+        let stack_set = stack.clone();
+        let hb_s = home_btn.clone();
+        let db_s = drops_btn.clone();
+        let cb_s = clip_btn.clone();
+        let fb_s = focus_btn.clone();
+        let nb_s = notes_btn.clone();
+        let sb_s = settings_btn.clone();
+        settings_btn.connect_clicked(move |_| {
+            if stack_set.visible_child_name().as_deref() == Some("settings") {
+                stack_set.set_visible_child_name("dashboard");
+                sb_s.remove_css_class("top-nav-active");
+                hb_s.add_css_class("top-nav-active");
+            } else {
+                stack_set.set_visible_child_name("settings");
+                sb_s.add_css_class("top-nav-active");
+                hb_s.remove_css_class("top-nav-active");
+                db_s.remove_css_class("top-nav-active");
+                cb_s.remove_css_class("top-nav-active");
+                fb_s.remove_css_class("top-nav-active");
+                nb_s.remove_css_class("top-nav-active");
+            }
         });
 
         // Switch to drops closure for external caller (e.g. pill drag-over)
@@ -345,4 +393,131 @@ fn get_battery_icon_name(pct: u32, charging: bool) -> &'static str {
             "battery-level-10-symbolic"
         }
     }
+}
+
+fn build_settings_view() -> GtkBox {
+    let container = GtkBox::new(Orientation::Vertical, 10);
+    container.set_valign(Align::Center);
+    container.set_halign(Align::Center);
+    container.set_hexpand(true);
+    container.set_vexpand(true);
+    container.set_size_request(440, -1);
+    container.add_css_class("settings-view-card");
+
+    // 1. Header: [ Preferences ] [ v0.1.0 ]
+    let header_row = GtkBox::new(Orientation::Horizontal, 8);
+    header_row.set_valign(Align::Center);
+    header_row.set_halign(Align::Fill);
+
+    let title_icon = Image::from_icon_name("preferences-system-symbolic");
+    title_icon.set_pixel_size(16);
+    title_icon.add_css_class("settings-header-icon");
+
+    let title_lbl = Label::new(Some("OpenNotch Preferences"));
+    title_lbl.add_css_class("settings-header-title");
+    title_lbl.set_halign(Align::Start);
+    title_lbl.set_hexpand(true);
+
+    let version_badge = Label::new(Some("v0.1.0"));
+    version_badge.add_css_class("settings-version-badge");
+
+    header_row.append(&title_icon);
+    header_row.append(&title_lbl);
+    header_row.append(&version_badge);
+
+    // Separator
+    let sep1 = Separator::new(Orientation::Horizontal);
+    sep1.add_css_class("settings-separator");
+
+    // 2. Autostart Setting Row (Enabled by default)
+    let autostart_row = GtkBox::new(Orientation::Horizontal, 12);
+    autostart_row.set_valign(Align::Center);
+    autostart_row.set_halign(Align::Fill);
+    autostart_row.add_css_class("settings-item-row");
+
+    let auto_icon = Image::from_icon_name("system-run-symbolic");
+    auto_icon.set_pixel_size(16);
+    auto_icon.add_css_class("settings-row-icon");
+
+    let text_col = GtkBox::new(Orientation::Vertical, 2);
+    text_col.set_halign(Align::Start);
+    text_col.set_hexpand(true);
+
+    let auto_title = Label::new(Some("Start at Login"));
+    auto_title.add_css_class("settings-row-label");
+    auto_title.set_halign(Align::Start);
+
+    let auto_desc = Label::new(Some("Launch OpenNotch automatically when you log in"));
+    auto_desc.add_css_class("settings-row-sub");
+    auto_desc.set_halign(Align::Start);
+
+    text_col.append(&auto_title);
+    text_col.append(&auto_desc);
+
+    let autostart_switch = Switch::new();
+    autostart_switch.set_valign(Align::Center);
+    autostart_switch.add_css_class("settings-switch");
+    let is_on = crate::config::is_autostart_enabled();
+    autostart_switch.set_active(is_on);
+
+    autostart_switch.connect_state_set(|_, active| {
+        crate::config::set_autostart_enabled(active);
+        glib::Propagation::Proceed
+    });
+
+    autostart_row.append(&auto_icon);
+    autostart_row.append(&text_col);
+    autostart_row.append(&autostart_switch);
+
+    // Separator
+    let sep2 = Separator::new(Orientation::Horizontal);
+    sep2.add_css_class("settings-separator");
+
+    // 3. Actions & Info Row: [ Linux Dynamic Island ] [ Quit OpenNotch ]
+    let actions_row = GtkBox::new(Orientation::Horizontal, 10);
+    actions_row.set_valign(Align::Center);
+    actions_row.set_halign(Align::Fill);
+
+    let info_box = GtkBox::new(Orientation::Horizontal, 6);
+    info_box.set_valign(Align::Center);
+    info_box.set_hexpand(true);
+
+    let info_icon = Image::from_icon_name("dialog-information-symbolic");
+    info_icon.set_pixel_size(14);
+    info_icon.add_css_class("settings-info-icon");
+
+    let info_lbl = Label::new(Some("Linux Dynamic Island"));
+    info_lbl.add_css_class("settings-info-text");
+
+    info_box.append(&info_icon);
+    info_box.append(&info_lbl);
+
+    let quit_btn = Button::new();
+    let quit_box = GtkBox::new(Orientation::Horizontal, 6);
+    quit_box.set_halign(Align::Center);
+    quit_box.set_valign(Align::Center);
+
+    let quit_icon = Image::from_icon_name("application-exit-symbolic");
+    quit_icon.set_pixel_size(13);
+    let quit_lbl = Label::new(Some("Quit OpenNotch"));
+
+    quit_box.append(&quit_icon);
+    quit_box.append(&quit_lbl);
+    quit_btn.set_child(Some(&quit_box));
+    quit_btn.add_css_class("settings-quit-btn");
+    quit_btn.set_tooltip_text(Some("Close OpenNotch application"));
+    quit_btn.connect_clicked(|_| {
+        std::process::exit(0);
+    });
+
+    actions_row.append(&info_box);
+    actions_row.append(&quit_btn);
+
+    container.append(&header_row);
+    container.append(&sep1);
+    container.append(&autostart_row);
+    container.append(&sep2);
+    container.append(&actions_row);
+
+    container
 }

@@ -16,6 +16,12 @@ pub struct GeneralConfig {
     pub expanded_width: i32,
     pub expanded_height: i32,
     pub hover_debounce_ms: u64,
+    #[serde(default = "default_autostart")]
+    pub autostart: bool,
+}
+
+fn default_autostart() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +48,7 @@ impl Default for Config {
                 expanded_width: 775,
                 expanded_height: 230,
                 hover_debounce_ms: 300,
+                autostart: true,
             },
             modules: ModulesConfig {
                 default_view: "calendar".to_string(),
@@ -109,5 +116,80 @@ impl Config {
             p.push("config.toml");
             p
         })
+    }
+}
+
+pub fn get_autostart_desktop_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|mut p| {
+        p.push("autostart");
+        p.push("open-notch.desktop");
+        p
+    })
+}
+
+pub fn is_autostart_enabled() -> bool {
+    if let Some(path) = get_autostart_desktop_path() {
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(&path) {
+                if content.contains("X-GNOME-Autostart-enabled=false") {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    let cfg = Config::load();
+    cfg.general.autostart
+}
+
+pub fn set_autostart_enabled(enabled: bool) {
+    let mut cfg = Config::load();
+    cfg.general.autostart = enabled;
+    cfg.save();
+
+    if let Some(path) = get_autostart_desktop_path() {
+        if enabled {
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let exec_path = std::env::current_exe()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "open-notch".to_string());
+
+            let content = format!(
+                "[Desktop Entry]\n\
+                 Name=OpenNotch\n\
+                 GenericName=Desktop Dynamic Notch\n\
+                 Comment=A sleek, fluid, and dynamic notch overlay for Linux desktops\n\
+                 Exec={}\n\
+                 Icon=open-notch\n\
+                 Terminal=false\n\
+                 Type=Application\n\
+                 Categories=Utility;GTK;\n\
+                 Keywords=notch;dynamic;island;shelf;media;clipboard;pomodoro;dock;overlay;\n\
+                 StartupNotify=false\n\
+                 StartupWMClass=open-notch\n\
+                 X-GNOME-Autostart-enabled=true\n\
+                 X-GNOME-Autostart-Delay=2\n\
+                 X-KDE-autostart-after=panel\n",
+                exec_path
+            );
+            let _ = fs::write(&path, content);
+        } else {
+            if path.exists() {
+                let _ = fs::remove_file(&path);
+            }
+        }
+    }
+}
+
+pub fn ensure_default_autostart() {
+    let cfg = Config::load();
+    if cfg.general.autostart {
+        if let Some(path) = get_autostart_desktop_path() {
+            if !path.exists() {
+                set_autostart_enabled(true);
+            }
+        }
     }
 }

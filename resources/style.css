@@ -673,14 +673,110 @@ window {
 .top-settings-btn {
     background: transparent;
     color: #64748b;
-    font-size: 13px;
-    padding: 2px 6px;
+    padding: 3px 6px;
+    border-radius: 6px;
     border: none;
     transition: all 150ms ease;
 }
 
+.top-settings-btn image {
+    color: inherit;
+}
+
 .top-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
     color: #f1f5f9;
+}
+
+/* Settings In-Shelf Card (Apple Glass Aesthetic) */
+.settings-view-card {
+    background: rgba(15, 17, 23, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 16px 22px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.settings-header-icon {
+    color: #38bdf8;
+}
+
+.settings-header-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.2px;
+}
+
+.settings-version-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 2px 7px;
+}
+
+.settings-separator {
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 0;
+}
+
+.settings-item-row {
+    padding: 4px 0;
+}
+
+.settings-row-icon {
+    color: #38bdf8;
+}
+
+.settings-row-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.settings-row-sub {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.settings-info-icon {
+    color: #64748b;
+}
+
+.settings-info-text {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.settings-switch {
+    margin-left: 8px;
+}
+
+.settings-switch:checked {
+    background: #0284c7;
+}
+
+.settings-quit-btn {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    transition: all 150ms ease;
+}
+
+.settings-quit-btn image {
+    color: inherit;
+}
+
+.settings-quit-btn:hover {
+    background: rgba(239, 68, 68, 0.28);
+    color: #ffffff;
+    border-color: rgba(239, 68, 68, 0.5);
 }
 
 .top-battery-badge {

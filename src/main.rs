@@ -25,6 +25,7 @@ fn main() {
 
     app.connect_startup(|_| {
         load_css();
+        config::ensure_default_autostart();
         if let Some(display) = Display::default() {
             let icon_theme = gtk4::IconTheme::for_display(&display);
             icon_theme.add_search_path("resources/icons");
