@@ -63,13 +63,13 @@ impl DashboardWidget {
         // Immediate initial check on startup
         let initial_active = is_active_check.load(Ordering::Relaxed);
         let initial_info = super::mpris::get_current_active_media();
-        let initial_has_playback = initial_active
+        let initial_has_media = initial_active
             && initial_info
                 .as_ref()
-                .map(|m| m.is_playing && !m.title.is_empty() && m.title != "No Media Playing")
+                .map(|m| !m.title.is_empty() && m.title != "No Media Playing")
                 .unwrap_or(false);
 
-        if initial_has_playback {
+        if initial_has_media {
             media_revealer.set_visible(true);
             media_revealer.set_reveal_child(true);
             calendar_panel.set_halign(Align::Fill);
@@ -80,20 +80,20 @@ impl DashboardWidget {
             calendar_panel.set_halign(Align::Center);
             calendar_panel.set_size_request(400, -1);
         }
-        updater_clone(initial_has_playback, initial_info);
+        updater_clone(initial_has_media, initial_info);
 
         let calendar_ref = calendar_panel.clone();
         glib::timeout_add_local(Duration::from_millis(500), move || {
             let active = is_active_check.load(Ordering::Relaxed);
             let active_info = super::mpris::get_current_active_media();
 
-            let has_active_playback = active
+            let has_media = active
                 && active_info
                     .as_ref()
-                    .map(|m| m.is_playing && !m.title.is_empty() && m.title != "No Media Playing")
+                    .map(|m| !m.title.is_empty() && m.title != "No Media Playing")
                     .unwrap_or(false);
 
-            if has_active_playback {
+            if has_media {
                 media_rev.set_visible(true);
                 media_rev.set_reveal_child(true);
                 calendar_ref.set_halign(Align::Fill);
@@ -110,7 +110,7 @@ impl DashboardWidget {
                 });
             }
 
-            updater_clone(has_active_playback, active_info);
+            updater_clone(has_media, active_info);
             glib::ControlFlow::Continue
         });
 
