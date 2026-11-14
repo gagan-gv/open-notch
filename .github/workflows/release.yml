@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Release Linux Packages
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libx11-dev \
+            libglib2.0-dev \
+            pkg-config \
+            desktop-file-utils
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
+
+      - name: Build Debian (.deb) package
+        run: cargo deb --no-build
+
+      - name: Package portable tarball
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME:-v0.1.0}"
+          ARCHIVE_DIR="open-notch-${TAG_NAME}-linux-x86_64"
+          mkdir -p "${ARCHIVE_DIR}/icons"
+
+          cp target/release/open-notch "${ARCHIVE_DIR}/"
+          strip "${ARCHIVE_DIR}/open-notch"
+          cp resources/open-notch.desktop "${ARCHIVE_DIR}/"
+          cp -r resources/icons/hicolor "${ARCHIVE_DIR}/icons/"
+          cp resources/open-notch.service "${ARCHIVE_DIR}/"
+          cp README.md LICENSE "${ARCHIVE_DIR}/"
+
+          cat << 'EOF' > "${ARCHIVE_DIR}/install.sh"
+          #!/usr/bin/env bash
+          set -e
+          BINDIR="${HOME}/.local/bin"
+          DATADIR="${HOME}/.local/share"
+          CONFIGDIR="${HOME}/.config"
+
+          echo "Installing OpenNotch..."
+          mkdir -p "${BINDIR}" "${DATADIR}/applications" "${DATADIR}/icons/hicolor" "${CONFIGDIR}/autostart"
+
+          cp -f open-notch "${BINDIR}/open-notch"
+          chmod +x "${BINDIR}/open-notch"
+
+          sed "s|^Exec=.*|Exec=${BINDIR}/open-notch|" open-notch.desktop > "${DATADIR}/applications/open-notch.desktop"
+          cp -f "${DATADIR}/applications/open-notch.desktop" "${CONFIGDIR}/autostart/open-notch.desktop"
+
+          if [ -d "icons/hicolor" ]; then
+              cp -rf icons/hicolor/* "${DATADIR}/icons/hicolor/"
+          fi
+
+          command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${DATADIR}/applications" || true
+          command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "${DATADIR}/icons/hicolor" || true
+
+          echo "OpenNotch installed successfully to ${BINDIR}/open-notch"
+          EOF
+          chmod +x "${ARCHIVE_DIR}/install.sh"
+
+          tar -czf "${ARCHIVE_DIR}.tar.gz" "${ARCHIVE_DIR}"
+          rm -rf "${ARCHIVE_DIR}"
+
+      - name: Prepare distribution artifacts
+        run: |
+          mkdir -p dist
+          cp target/debian/*.deb dist/
+          cp open-notch-*.tar.gz dist/
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.deb
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
