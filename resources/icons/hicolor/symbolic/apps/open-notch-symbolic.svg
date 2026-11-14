@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Minimalist symbolic notch icon -->
+  <path d="M 0 1 L 16 1 L 16 3 L 12 3 C 11.5 3 11 3.5 10.8 4 L 10.4 5.5 C 10 6.5 9 7 8 7 C 7 7 6 6.5 5.6 5.5 L 5.2 4 C 5 3.5 4.5 3 4 3 L 0 3 Z"
+        fill="#2e3436"/>
+  <circle cx="8" cy="4" r="0.8" fill="#ffffff"/>
+</svg>

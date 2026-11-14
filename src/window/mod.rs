@@ -13,6 +13,7 @@ pub fn build_ui(app: &Application, config: Config) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("OpenNotch")
+        .icon_name("open-notch")
         .default_width(config.general.expanded_width)
         .default_height(config.general.expanded_height)
         .decorated(false)

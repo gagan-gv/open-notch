@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=OpenNotch
+GenericName=Desktop Dynamic Notch
+Comment=A sleek, fluid, and dynamic notch overlay for Linux desktops
+Exec=open-notch
+Icon=open-notch
+Terminal=false
+Type=Application
+Categories=Utility;GTK;
+Keywords=notch;dynamic;island;shelf;media;clipboard;pomodoro;dock;overlay;
+StartupNotify=false
+StartupWMClass=open-notch
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=2
+X-KDE-autostart-after=panel

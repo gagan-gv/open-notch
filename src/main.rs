@@ -25,6 +25,18 @@ fn main() {
 
     app.connect_startup(|_| {
         load_css();
+        if let Some(display) = Display::default() {
+            let icon_theme = gtk4::IconTheme::for_display(&display);
+            icon_theme.add_search_path("resources/icons");
+            if let Ok(exe) = std::env::current_exe() {
+                if let Some(parent) = exe.parent() {
+                    icon_theme.add_search_path(parent.join("resources/icons"));
+                    if let Some(grandparent) = parent.parent() {
+                        icon_theme.add_search_path(grandparent.join("share/icons"));
+                    }
+                }
+            }
+        }
     });
 
     app.connect_activate(|app| {
