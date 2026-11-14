@@ -162,6 +162,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
                 pill_box_media.remove_css_class("drops-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 *is_animating_media.borrow_mut() = false;
                 return glib::ControlFlow::Continue;
             }
@@ -170,8 +171,27 @@ impl NotchWidget {
             let media = crate::modules::mpris::get_current_active_media();
             let is_playing = media.as_ref().map(|m| m.is_playing).unwrap_or(false);
             let drop_files = crate::modules::drop_shelf::get_shelf_files();
+            let is_copied = crate::modules::clipboard::get_last_copied_flash();
 
-            if pomo.is_running && is_playing {
+            if is_copied {
+                // Clipboard copy instant confirmation flash on resting pill
+                left_icon_monitor.set_text("📋");
+                left_text_monitor.set_text("Copied");
+                left_text_monitor.set_visible(true);
+                left_pill_box_monitor.set_visible(true);
+
+                right_text_monitor.set_visible(false);
+                eq_area_monitor.set_visible(false);
+                right_pill_box_monitor.set_visible(false);
+
+                pill_box_media.remove_css_class("pomo-active");
+                pill_box_media.remove_css_class("pomo-break-active");
+                pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("drops-active");
+                pill_box_media.add_css_class("clipboard-active");
+                *is_animating_media.borrow_mut() = false;
+
+            } else if pomo.is_running && is_playing {
                 // Both Pomodoro & Music are active
                 let icon_str = match pomo.mode {
                     crate::modules::pomodoro::PomodoroMode::Work => "🍅",
@@ -196,6 +216,7 @@ impl NotchWidget {
 
                 pill_box_media.remove_css_class("media-active");
                 pill_box_media.remove_css_class("drops-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
                     pill_box_media.remove_css_class("pomo-break-active");
                     pill_box_media.add_css_class("pomo-active");
@@ -225,6 +246,7 @@ impl NotchWidget {
 
                 pill_box_media.remove_css_class("media-active");
                 pill_box_media.remove_css_class("drops-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
                     pill_box_media.remove_css_class("pomo-break-active");
                     pill_box_media.add_css_class("pomo-active");
@@ -255,6 +277,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-active");
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("drops-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 pill_box_media.add_css_class("media-active");
                 *is_animating_media.borrow_mut() = true;
 
@@ -273,6 +296,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-active");
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 pill_box_media.add_css_class("drops-active");
                 *is_animating_media.borrow_mut() = false;
 
@@ -288,6 +312,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
                 pill_box_media.remove_css_class("drops-active");
+                pill_box_media.remove_css_class("clipboard-active");
                 *is_animating_media.borrow_mut() = false;
             }
 
@@ -360,6 +385,7 @@ impl NotchWidget {
             pill_box_drop.remove_css_class("pomo-break-active");
             pill_box_drop.remove_css_class("media-active");
             pill_box_drop.remove_css_class("drops-active");
+            pill_box_drop.remove_css_class("clipboard-active");
             *is_animating_drop.borrow_mut() = false;
             revealer_drop.set_reveal_child(true);
             modules_drop.switch_to_drops();
@@ -419,6 +445,7 @@ impl NotchWidget {
             pill_box_enter.remove_css_class("pomo-break-active");
             pill_box_enter.remove_css_class("media-active");
             pill_box_enter.remove_css_class("drops-active");
+            pill_box_enter.remove_css_class("clipboard-active");
             *is_animating_enter.borrow_mut() = false;
             revealer_enter.set_reveal_child(true);
             super::position::update_notch_input_region(

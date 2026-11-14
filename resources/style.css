@@ -47,6 +47,10 @@ window {
     border-color: rgba(56, 189, 248, 0.38);
 }
 
+.notch-pill.clipboard-active {
+    border-color: rgba(168, 85, 247, 0.45);
+}
+
 .pill-icon,
 .pill-media-icon {
     font-size: 11px;
@@ -997,4 +1001,146 @@ window {
 .top-nav-btn.has-drops {
     color: #38bdf8;
     font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   10. Clipboard History Tray
+   -------------------------------------------------------------------------- */
+.clipboard-widget {
+    padding: 2px 4px;
+}
+
+.clipboard-header {
+    padding: 0 2px 4px 2px;
+}
+
+.clipboard-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: 0.3px;
+}
+
+.clipboard-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 8px;
+    padding: 2px 7px;
+}
+
+.clipboard-action-btn {
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    transition: all 150ms ease;
+}
+
+.clipboard-action-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.clipboard-search-entry {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #f8fafc;
+    font-size: 11px;
+    padding: 4px 8px;
+    min-height: 28px;
+    caret-color: #c084fc;
+    transition: all 150ms ease;
+}
+
+.clipboard-search-entry:focus {
+    border-color: rgba(168, 85, 247, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+}
+
+.clipboard-scrolled {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 4px;
+}
+
+.clip-row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 5px 8px;
+    transition: all 150ms ease;
+}
+
+.clip-row:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(168, 85, 247, 0.35);
+}
+
+.clip-row.pinned {
+    border-left: 2.5px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.clip-type-icon {
+    font-size: 13px;
+}
+
+.clip-snippet {
+    font-size: 11px;
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.clip-snippet.code-text {
+    font-family: monospace;
+    color: #a5f3fc;
+}
+
+.clip-meta {
+    font-size: 9px;
+    color: #64748b;
+}
+
+.clip-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 120ms ease;
+}
+
+.clip-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+}
+
+.clip-btn.pin-active {
+    color: #f59e0b;
+}
+
+.clip-btn-del:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.clip-empty-icon {
+    font-size: 26px;
+    color: #64748b;
+}
+
+.clip-empty-text {
+    font-size: 11px;
+    color: #64748b;
 }
