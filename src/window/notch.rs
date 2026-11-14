@@ -161,6 +161,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-active");
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("drops-active");
                 *is_animating_media.borrow_mut() = false;
                 return glib::ControlFlow::Continue;
             }
@@ -168,6 +169,7 @@ impl NotchWidget {
             let pomo = crate::modules::pomodoro::get_current_pomodoro();
             let media = crate::modules::mpris::get_current_active_media();
             let is_playing = media.as_ref().map(|m| m.is_playing).unwrap_or(false);
+            let drop_files = crate::modules::drop_shelf::get_shelf_files();
 
             if pomo.is_running && is_playing {
                 // Both Pomodoro & Music are active
@@ -193,6 +195,7 @@ impl NotchWidget {
                 right_pill_box_monitor.set_visible(true);
 
                 pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("drops-active");
                 if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
                     pill_box_media.remove_css_class("pomo-break-active");
                     pill_box_media.add_css_class("pomo-active");
@@ -221,6 +224,7 @@ impl NotchWidget {
                 right_pill_box_monitor.set_visible(true);
 
                 pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("drops-active");
                 if pomo.mode == crate::modules::pomodoro::PomodoroMode::Work {
                     pill_box_media.remove_css_class("pomo-break-active");
                     pill_box_media.add_css_class("pomo-active");
@@ -250,8 +254,27 @@ impl NotchWidget {
 
                 pill_box_media.remove_css_class("pomo-active");
                 pill_box_media.remove_css_class("pomo-break-active");
+                pill_box_media.remove_css_class("drops-active");
                 pill_box_media.add_css_class("media-active");
                 *is_animating_media.borrow_mut() = true;
+
+            } else if !drop_files.is_empty() {
+                // Drop Shelf has files in transit
+                left_icon_monitor.set_text("📥");
+                left_text_monitor.set_text(&format!("{}", drop_files.len()));
+                left_text_monitor.set_visible(true);
+                left_pill_box_monitor.set_visible(true);
+
+                right_text_monitor.set_text(if drop_files.len() == 1 { "item" } else { "items" });
+                right_text_monitor.set_visible(true);
+                eq_area_monitor.set_visible(false);
+                right_pill_box_monitor.set_visible(true);
+
+                pill_box_media.remove_css_class("pomo-active");
+                pill_box_media.remove_css_class("pomo-break-active");
+                pill_box_media.remove_css_class("media-active");
+                pill_box_media.add_css_class("drops-active");
+                *is_animating_media.borrow_mut() = false;
 
             } else {
                 // Idle
@@ -264,6 +287,7 @@ impl NotchWidget {
                 pill_box_media.remove_css_class("pomo-active");
                 pill_box_media.remove_css_class("pomo-break-active");
                 pill_box_media.remove_css_class("media-active");
+                pill_box_media.remove_css_class("drops-active");
                 *is_animating_media.borrow_mut() = false;
             }
 
@@ -306,7 +330,7 @@ impl NotchWidget {
         });
 
         // Expanded Shelf with Modules
-        let modules = ModulesContainer::new(&config);
+        let modules = Rc::new(ModulesContainer::new(&config));
         let revealer = Revealer::new();
         revealer.set_transition_type(RevealerTransitionType::SlideDown);
         revealer.set_transition_duration(180);
@@ -315,6 +339,63 @@ impl NotchWidget {
 
         root_box.append(&pill_box);
         root_box.append(&revealer);
+
+        // DropTarget on Resting Pill: Dragging a file over the notch immediately opens the Drop Shelf
+        let pill_drop_target = gtk4::DropTarget::new(gtk4::gdk::FileList::static_type(), gtk4::gdk::DragAction::COPY);
+        let is_hovered_drop = Rc::clone(&is_hovered);
+        let left_pill_drop = left_pill_box.clone();
+        let right_pill_drop = right_pill_box.clone();
+        let pill_box_drop = pill_box.clone();
+        let is_animating_drop = Rc::clone(&is_animating);
+        let revealer_drop = revealer.clone();
+        let window_drop = window.clone();
+        let cfg_drop = config.clone();
+        let modules_drop = Rc::clone(&modules);
+
+        pill_drop_target.connect_enter(move |_target, _x, _y| {
+            *is_hovered_drop.borrow_mut() = true;
+            left_pill_drop.set_visible(false);
+            right_pill_drop.set_visible(false);
+            pill_box_drop.remove_css_class("pomo-active");
+            pill_box_drop.remove_css_class("pomo-break-active");
+            pill_box_drop.remove_css_class("media-active");
+            pill_box_drop.remove_css_class("drops-active");
+            *is_animating_drop.borrow_mut() = false;
+            revealer_drop.set_reveal_child(true);
+            modules_drop.switch_to_drops();
+            super::position::update_notch_input_region(
+                &window_drop,
+                true,
+                cfg_drop.general.collapsed_width,
+                cfg_drop.general.collapsed_height,
+                cfg_drop.general.expanded_width,
+                cfg_drop.general.expanded_height,
+            );
+            gtk4::gdk::DragAction::COPY
+        });
+
+        let modules_drop_end = Rc::clone(&modules);
+        pill_drop_target.connect_drop(move |_target, value, _x, _y| {
+            if let Ok(file_list) = value.get::<gtk4::gdk::FileList>() {
+                let mut added = false;
+                for file in file_list.files() {
+                    if let Some(path) = file.path() {
+                        if crate::modules::drop_shelf::add_shelf_file(path) {
+                            added = true;
+                        }
+                    }
+                }
+                if added {
+                    modules_drop_end.drop_shelf.refresh_ui();
+                }
+                modules_drop_end.switch_to_drops();
+                true
+            } else {
+                false
+            }
+        });
+
+        pill_box.add_controller(pill_drop_target);
 
         // Motion & Scroll Controllers for Hover & Scroll Events
         let motion_ctrl = EventControllerMotion::new();
@@ -337,6 +418,7 @@ impl NotchWidget {
             pill_box_enter.remove_css_class("pomo-active");
             pill_box_enter.remove_css_class("pomo-break-active");
             pill_box_enter.remove_css_class("media-active");
+            pill_box_enter.remove_css_class("drops-active");
             *is_animating_enter.borrow_mut() = false;
             revealer_enter.set_reveal_child(true);
             super::position::update_notch_input_region(
