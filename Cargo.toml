@@ -1,6 +1,6 @@
 [package]
 name = "open-notch"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Gagan Chordia <chordiagagan@gmail.com>"]
 description = "A sleek, fluid, and dynamic notch overlay for Linux desktops"

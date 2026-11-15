@@ -1,6 +1,7 @@
 mod config;
 mod modules;
 mod privacy;
+pub mod updater;
 mod window;
 
 use config::Config;

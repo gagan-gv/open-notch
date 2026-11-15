@@ -210,7 +210,7 @@ impl ModulesContainer {
         stack.add_named(&calendar_widget.container, Some("calendar"));
 
         // 7. Settings View (In-shelf Preferences)
-        let settings_view = build_settings_view();
+        let settings_view = build_settings_view(&settings_btn);
         stack.add_named(&settings_view, Some("settings"));
 
         // Set default screen to dashboard (matching screenshot)
@@ -395,16 +395,16 @@ fn get_battery_icon_name(pct: u32, charging: bool) -> &'static str {
     }
 }
 
-fn build_settings_view() -> GtkBox {
+fn build_settings_view(settings_btn: &Button) -> GtkBox {
     let container = GtkBox::new(Orientation::Vertical, 10);
     container.set_valign(Align::Center);
     container.set_halign(Align::Center);
     container.set_hexpand(true);
     container.set_vexpand(true);
-    container.set_size_request(440, -1);
+    container.set_size_request(450, -1);
     container.add_css_class("settings-view-card");
 
-    // 1. Header: [ Preferences ] [ v0.1.0 ]
+    // 1. Header: [ Preferences ] [ v0.2.0 ]
     let header_row = GtkBox::new(Orientation::Horizontal, 8);
     header_row.set_valign(Align::Center);
     header_row.set_halign(Align::Fill);
@@ -418,7 +418,8 @@ fn build_settings_view() -> GtkBox {
     title_lbl.set_halign(Align::Start);
     title_lbl.set_hexpand(true);
 
-    let version_badge = Label::new(Some("v0.1.0"));
+    let cur_ver_str = format!("v{}", crate::updater::CURRENT_VERSION);
+    let version_badge = Label::new(Some(&cur_ver_str));
     version_badge.add_css_class("settings-version-badge");
 
     header_row.append(&title_icon);
@@ -473,7 +474,147 @@ fn build_settings_view() -> GtkBox {
     let sep2 = Separator::new(Orientation::Horizontal);
     sep2.add_css_class("settings-separator");
 
-    // 3. Actions & Info Row: [ Linux Dynamic Island ] [ Quit OpenNotch ]
+    // 3. Updates Row
+    let update_row = GtkBox::new(Orientation::Horizontal, 12);
+    update_row.set_valign(Align::Center);
+    update_row.set_halign(Align::Fill);
+    update_row.add_css_class("settings-item-row");
+
+    let update_icon = Image::from_icon_name("software-update-available-symbolic");
+    update_icon.set_pixel_size(16);
+    update_icon.add_css_class("settings-row-icon");
+
+    let update_text_col = GtkBox::new(Orientation::Vertical, 2);
+    update_text_col.set_halign(Align::Start);
+    update_text_col.set_hexpand(true);
+
+    let update_title = Label::new(Some("Software Updates"));
+    update_title.add_css_class("settings-row-label");
+    update_title.set_halign(Align::Start);
+
+    let default_status = format!("v{} • Up to date", crate::updater::CURRENT_VERSION);
+    let update_sub = Label::new(Some(&default_status));
+    update_sub.add_css_class("settings-row-sub");
+    update_sub.set_halign(Align::Start);
+
+    update_text_col.append(&update_title);
+    update_text_col.append(&update_sub);
+
+    let check_btn = Button::with_label("Check for Updates");
+    check_btn.set_valign(Align::Center);
+    check_btn.add_css_class("settings-update-btn");
+
+    update_row.append(&update_icon);
+    update_row.append(&update_text_col);
+    update_row.append(&check_btn);
+
+    // Action button row (dynamically populated when update found)
+    let details_row = GtkBox::new(Orientation::Horizontal, 8);
+    details_row.set_halign(Align::End);
+    details_row.set_visible(false);
+
+    // Check updates callback
+    let s_lbl = update_sub.clone();
+    let c_btn = check_btn.clone();
+    let d_row = details_row.clone();
+    let top_btn = settings_btn.clone();
+
+    let trigger_check = std::rc::Rc::new(move || {
+        c_btn.set_sensitive(false);
+        c_btn.set_label("Checking...");
+        s_lbl.set_text("Checking GitHub for updates...");
+        s_lbl.remove_css_class("settings-update-highlight");
+
+        let s_lbl_clone = s_lbl.clone();
+        let c_btn_clone = c_btn.clone();
+        let d_row_clone = d_row.clone();
+        let top_btn_clone = top_btn.clone();
+
+        let (tx, rx) = std::sync::mpsc::channel::<crate::updater::UpdateStatus>();
+
+        std::thread::spawn(move || {
+            let status = crate::updater::check_updates_sync();
+            let _ = tx.send(status);
+        });
+
+        glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
+            match rx.try_recv() {
+                Ok(status) => {
+                    c_btn_clone.set_sensitive(true);
+                    c_btn_clone.set_label("Check for Updates");
+
+                    match status {
+                        crate::updater::UpdateStatus::UpToDate(ver) => {
+                            s_lbl_clone.set_text(&format!("v{} • You're on the latest version", ver));
+                            s_lbl_clone.remove_css_class("settings-update-highlight");
+                            top_btn_clone.remove_css_class("has-update");
+                            d_row_clone.set_visible(false);
+                        }
+                        crate::updater::UpdateStatus::UpdateAvailable(info) => {
+                            s_lbl_clone.set_text(&format!("🌟 v{} is available!", info.tag_name));
+                            s_lbl_clone.add_css_class("settings-update-highlight");
+                            top_btn_clone.add_css_class("has-update");
+
+                            while let Some(child) = d_row_clone.first_child() {
+                                d_row_clone.remove(&child);
+                            }
+
+                            if let Some(deb_url) = info.deb_url.clone() {
+                                let deb_btn = Button::with_label("Download .deb");
+                                deb_btn.add_css_class("settings-deb-btn");
+                                deb_btn.connect_clicked(move |_| {
+                                    crate::updater::open_url(&deb_url);
+                                });
+                                d_row_clone.append(&deb_btn);
+                            }
+
+                            let view_btn = Button::with_label("View Release Notes");
+                            view_btn.add_css_class("settings-release-btn");
+                            let url = info.html_url.clone();
+                            view_btn.connect_clicked(move |_| {
+                                crate::updater::open_url(&url);
+                            });
+                            d_row_clone.append(&view_btn);
+
+                            d_row_clone.set_visible(true);
+                        }
+                        crate::updater::UpdateStatus::Error(_) => {
+                            s_lbl_clone.set_text("Offline / Check failed");
+                            s_lbl_clone.remove_css_class("settings-update-highlight");
+                        }
+                        _ => {}
+                    }
+                    glib::ControlFlow::Break
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    c_btn_clone.set_sensitive(true);
+                    c_btn_clone.set_label("Check for Updates");
+                    s_lbl_clone.set_text("Offline / Check failed");
+                    glib::ControlFlow::Break
+                }
+            }
+        });
+    });
+
+    let tc = trigger_check.clone();
+    check_btn.connect_clicked(move |_| {
+        tc();
+    });
+
+    // Auto-check once daily on startup
+    if crate::updater::should_auto_check(24) {
+        let tc_auto = trigger_check.clone();
+        glib::timeout_add_local_once(std::time::Duration::from_millis(1500), move || {
+            tc_auto();
+        });
+    }
+
+    // Separator
+    let sep3 = Separator::new(Orientation::Horizontal);
+    sep3.add_css_class("settings-separator");
+
+    // 4. Actions & Info Row: [ Linux Dynamic Island ] [ Quit OpenNotch ]
     let actions_row = GtkBox::new(Orientation::Horizontal, 10);
     actions_row.set_valign(Align::Center);
     actions_row.set_halign(Align::Fill);
@@ -517,6 +658,9 @@ fn build_settings_view() -> GtkBox {
     container.append(&sep1);
     container.append(&autostart_row);
     container.append(&sep2);
+    container.append(&update_row);
+    container.append(&details_row);
+    container.append(&sep3);
     container.append(&actions_row);
 
     container

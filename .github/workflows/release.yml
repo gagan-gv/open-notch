@@ -45,7 +45,7 @@ jobs:
 
       - name: Package portable tarball
         run: |
-          TAG_NAME="${GITHUB_REF_NAME:-v0.1.0}"
+          TAG_NAME="${GITHUB_REF_NAME:-v0.2.0}"
           ARCHIVE_DIR="open-notch-${TAG_NAME}-linux-x86_64"
           mkdir -p "${ARCHIVE_DIR}/icons"
 
